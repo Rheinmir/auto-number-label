@@ -391,65 +391,71 @@ async function printAllLabels() {
   }
 
   try {
+    const { jsPDF } = window.jspdf;
     const chunkSize = 4;
     const totalPages = Math.ceil(total / chunkSize);
+    const filename = `Nhan_PVFCCo_${new Date().getTime()}.pdf`;
 
-    const opt = {
-      margin: 0,
-      filename: `Nhan_PVFCCo_${new Date().getTime()}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        allowTaint: true,
-      },
-      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-    };
+    // A4 dimensions in mm
+    const PAGE_W_MM = 210;
+    const PAGE_H_MM = 297;
 
-    // Create a FIXED-POSITION container (in-viewport so html2canvas can see it, but below UI)
+    // Create a fixed-position container that is VISIBLE in the viewport
+    // z-index:99 keeps it below the loading overlay (z:100) but renderable by html2canvas
     const printPage = document.createElement("div");
     printPage.style.cssText = [
       "position:fixed",
       "top:0",
       "left:0",
-      "width:210mm",
-      "height:297mm",
+      `width:${PAGE_W_MM}mm`,
+      `height:${PAGE_H_MM}mm`,
       "background:white",
       "display:grid",
       "grid-template-columns:1fr 1fr",
       "grid-template-rows:1fr 1fr",
-      "z-index:99", // Below loading overlay (z:100) but visible to html2canvas
+      "z-index:99",
       "pointer-events:none",
+      "overflow:hidden",
     ].join(";");
     document.body.appendChild(printPage);
 
-    const worker = html2pdf().set(opt);
+    // Initialize jsPDF
+    const pdf = new jsPDF({
+      unit: "mm",
+      format: "a4",
+      orientation: "portrait",
+    });
 
     for (let p = 0; p < totalPages; p++) {
-      // Clear and rebuild the 4 slots for this page
+      // Populate the 4 slots
       printPage.innerHTML = "";
       for (let i = 0; i < chunkSize; i++) {
         const recIdx = p * chunkSize + i;
         const rec = recIdx < total ? processingRecords[recIdx] : null;
         const node = buildLabelNode(rec);
-
-        // Dashed cut lines between labels
-        node.style.borderRight = i % 2 === 0 ? "1px dashed #ccc" : "";
-        node.style.borderBottom = i < 2 ? "1px dashed #ccc" : "";
-
+        node.style.borderRight = i % 2 === 0 ? "1px dashed #aaa" : "";
+        node.style.borderBottom = i < 2 ? "1px dashed #aaa" : "";
         printPage.appendChild(node);
       }
 
-      // Let the browser paint the fixed element before capturing
+      // Wait for browser paint
       await new Promise((r) => setTimeout(r, 300));
 
-      if (p === 0) {
-        await worker.from(printPage).toContainer().toCanvas().toImg().toPdf();
-      } else {
-        await worker.get("pdf").then((pdf) => pdf.addPage());
-        await worker.from(printPage).toContainer().toCanvas().toImg().toPdf();
-      }
+      // Capture with html2canvas directly
+      const canvas = await html2canvas(printPage, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      const imgW_mm = PAGE_W_MM;
+      const imgH_mm = (canvas.height / canvas.width) * PAGE_W_MM;
+
+      if (p > 0) pdf.addPage();
+      pdf.addImage(imgData, "JPEG", 0, 0, imgW_mm, imgH_mm);
 
       const percent = Math.round(((p + 1) / totalPages) * 100);
       loadingBar.style.width = percent + "%";
@@ -457,7 +463,7 @@ async function printAllLabels() {
     }
 
     document.body.removeChild(printPage);
-    await worker.save();
+    pdf.save(filename);
 
     loadingBar.style.width = "100%";
     loadingProgress.innerText = "Hoàn tất!";
@@ -468,9 +474,9 @@ async function printAllLabels() {
     }, 1000);
   } catch (error) {
     console.error("PDF Export failed:", error);
-    alert("Có lỗi khi xuất PDF. Vui lòng thử lại.");
+    alert("Có lỗi khi xuất PDF: " + error.message);
     loadingOverlay.classList.add("hidden");
-    const stray = document.querySelector("div[style*='z-index:-1']");
+    const stray = document.querySelector("div[style*='z-index:99']");
     if (stray) document.body.removeChild(stray);
   }
 }
