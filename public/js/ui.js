@@ -325,31 +325,15 @@ async function printAllLabels() {
 
   let processingRecords = records;
   if (fromVal || toVal) {
-    let startIdx = 0;
-    let endIdx = totalRecords - 1;
-
-    if (fromVal) {
-      const fromNum = parseInt(fromVal);
-      const idx = records.findIndex((r) => {
-        const rEnd = parseInt(r["Đến hồ sơ số"]);
-        return !isNaN(fromNum) && !isNaN(rEnd)
-          ? rEnd >= fromNum
-          : String(r["Đến hồ sơ số"]).includes(fromVal);
-      });
-      if (idx !== -1) startIdx = idx;
-    }
-
-    if (toVal) {
-      const toNum = parseInt(toVal);
-      const idx = [...records].reverse().findIndex((r) => {
-        const rStart = parseInt(r["Từ hồ sơ số"]);
-        return !isNaN(toNum) && !isNaN(rStart)
-          ? rStart <= toNum
-          : String(r["Từ hồ sơ số"]).includes(toVal);
-      });
-      if (idx !== -1) endIdx = totalRecords - 1 - idx;
-    }
-    processingRecords = records.slice(startIdx, endIdx + 1);
+    processingRecords = records.filter((r) => {
+      const hop = parseInt(r["Hộp số"]);
+      if (isNaN(hop)) return true; // keep rows with non-numeric box numbers
+      if (fromVal && !isNaN(parseInt(fromVal)) && hop < parseInt(fromVal))
+        return false;
+      if (toVal && !isNaN(parseInt(toVal)) && hop > parseInt(toVal))
+        return false;
+      return true;
+    });
   }
 
   const total = processingRecords.length;
