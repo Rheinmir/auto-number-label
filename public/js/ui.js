@@ -423,12 +423,12 @@ async function printAllLabels() {
         printPage.appendChild(node);
       }
 
-      // Wait for browser paint
-      await new Promise((r) => setTimeout(r, 300));
+      // Wait for browser paint (shorter delay = faster export)
+      await new Promise((r) => setTimeout(r, 80));
 
       // Capture with html2canvas directly
       const canvas = await html2canvas(printPage, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         allowTaint: true,
         logging: false,
