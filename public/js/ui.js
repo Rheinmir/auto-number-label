@@ -261,8 +261,11 @@ function syncA4Preview() {
       });
 
       // Inject sequential data if records exist
-      if (typeof records !== "undefined" && window.currentIndex !== undefined) {
-        const recordIdx = window.currentIndex + (slot - 1);
+      if (
+        typeof records !== "undefined" &&
+        typeof currentIndex !== "undefined"
+      ) {
+        const recordIdx = currentIndex + (slot - 1);
 
         if (recordIdx < records.length) {
           const record = records[recordIdx];
