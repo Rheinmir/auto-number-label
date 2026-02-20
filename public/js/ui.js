@@ -359,123 +359,116 @@ async function printAllLabels() {
     return;
   }
 
-  const opt = {
-    margin: 0,
-    filename: `Nhan_PVFCCo_${new Date().getTime()}.pdf`,
-    image: { type: "jpeg", quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, logging: false },
-    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-  };
+  // Helper to fill a single label element with record data
+  function fillLabelNode(node, record) {
+    const elBoxNum = node.querySelector("#el-boxnum");
+    const elFrom = node.querySelector("#el-from");
+    const elTo = node.querySelector("#el-to");
+    if (elBoxNum) elBoxNum.innerText = record ? record["Hộp số"] : "";
+    if (elFrom)
+      elFrom.innerText = record ? "Từ hồ sơ số: " + record["Từ hồ sơ số"] : "";
+    if (elTo)
+      elTo.innerText = record ? "Đến hồ sơ số: " + record["Đến hồ sơ số"] : "";
+    // Strip edit decorations
+    node.querySelectorAll(".draggable").forEach((d) => {
+      d.classList.remove("active");
+      d.style.outline = "none";
+      d.style.background = "none";
+    });
+  }
+
+  // Save original content of the live preview to restore afterwards
+  const livePreview = document.getElementById("a4-preview-page");
+  const savedTransform = livePreview.style.transform;
+
+  // Remove zoom and shadow so html2pdf gets 1:1 A4
+  livePreview.style.transform = "scale(1)";
+  livePreview.style.boxShadow = "none";
+  livePreview.style.margin = "0";
+
+  // Get the 4 live slot inner containers
+  const slot1 = document.getElementById("label-canvas");
+  const slot2 = document.getElementById("label-copy-2");
+  const slot3 = document.getElementById("label-copy-3");
+  const slot4 = document.getElementById("label-copy-4");
+  const slots = [slot1, slot2, slot3, slot4];
+
+  // Populate slot1 from templateHtml so it has the correct layout
+  slot1.innerHTML = templateHtml;
 
   try {
-    // Process in chunks of 4 for A4 (2x2 grid)
     const chunkSize = 4;
     const totalPages = Math.ceil(total / chunkSize);
 
-    // Create a hidden container for all pages to ensure they are rendered by the browser before PDF capture
-    const printWrapper = document.createElement("div");
-    printWrapper.style.position = "absolute";
-    printWrapper.style.left = "-9999px";
-    printWrapper.style.top = "0";
-    printWrapper.style.width = "210mm";
-    printWrapper.style.backgroundColor = "white";
-    document.body.appendChild(printWrapper);
+    const opt = {
+      margin: 0,
+      filename: `Nhan_PVFCCo_${new Date().getTime()}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        allowTaint: true,
+      },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+    };
+
+    const worker = html2pdf().set(opt);
 
     for (let p = 0; p < totalPages; p++) {
-      // Create an A4 Page Container
-      const a4Page = document.createElement("div");
-      a4Page.className = "print-page-a4";
-      a4Page.style.width = "210mm";
-      a4Page.style.height = "297mm";
-      a4Page.style.display = "flex";
-      a4Page.style.flexWrap = "wrap";
-      a4Page.style.alignContent = "flex-start";
-      a4Page.style.pageBreakAfter = "always";
-      a4Page.style.backgroundColor = "white";
-
-      // Add up to 4 labels to this page
+      // Fill the 4 live slots with this page's data
       for (let i = 0; i < chunkSize; i++) {
-        const recordIdx = p * chunkSize + i;
-        if (recordIdx >= total) break;
-
-        const record = processingRecords[recordIdx];
-
-        const labelWrapper = document.createElement("div");
-        labelWrapper.style.width = "105mm";
-        labelWrapper.style.height = "148.5mm";
-        labelWrapper.style.overflow = "hidden";
-        labelWrapper.style.position = "relative";
-        labelWrapper.style.boxSizing = "border-box";
-        labelWrapper.style.borderRight =
-          i % 2 === 0 ? "1px dashed #ccc" : "none";
-        labelWrapper.style.borderBottom = i < 2 ? "1px dashed #ccc" : "none";
-
-        const labelInner = document.createElement("div");
-        labelInner.style.width = "148mm";
-        labelInner.style.height = "210mm";
-        labelInner.style.transform = "scale(0.709)"; // Scale A5 down to A6
-        labelInner.style.transformOrigin = "top left";
-        labelInner.style.position = "absolute";
-        labelInner.innerHTML = templateHtml;
-
-        // Fill data
-        const elBoxNum = labelInner.querySelector("#el-boxnum");
-        const elFrom = labelInner.querySelector("#el-from");
-        const elTo = labelInner.querySelector("#el-to");
-
-        if (elBoxNum) elBoxNum.innerText = record["Hộp số"];
-        if (elFrom) elFrom.innerText = "Từ hồ sơ số: " + record["Từ hồ sơ số"];
-        if (elTo) elTo.innerText = "Đến hồ sơ số: " + record["Đến hồ sơ số"];
-
-        const draggables = labelInner.querySelectorAll(".draggable");
-        draggables.forEach((d) => {
-          d.classList.remove("active");
-          d.style.border = "none";
-          d.style.background = "none";
-        });
-
-        labelWrapper.appendChild(labelInner);
-        a4Page.appendChild(labelWrapper);
+        const recIdx = p * chunkSize + i;
+        const rec = recIdx < total ? processingRecords[recIdx] : null;
+        if (slots[i]) {
+          // Reset inner HTML to template for slot 1
+          if (i === 0) {
+            slots[0].innerHTML = templateHtml;
+          } else {
+            slots[i].innerHTML = templateHtml;
+          }
+          // Fill data into the node
+          fillLabelNode(slots[i], rec);
+          // If no data, blank out the slot visually
+          if (!rec) slots[i].style.opacity = "0";
+          else slots[i].style.opacity = "1";
+        }
       }
 
-      printWrapper.appendChild(a4Page);
+      // Wait a frame for the browser to render
+      await new Promise((r) => setTimeout(r, 200));
 
-      // Update progress UI (Phase 1: Generating HTML)
-      const percent = Math.round(((p + 1) / totalPages) * 50);
+      // Capture the live preview page
+      if (p === 0) {
+        await worker.from(livePreview).toContainer().toCanvas().toImg().toPdf();
+      } else {
+        await worker.get("pdf").then((pdf) => pdf.addPage());
+        await worker.from(livePreview).toContainer().toCanvas().toImg().toPdf();
+      }
+
+      // Update progress
+      const percent = Math.round(((p + 1) / totalPages) * 100);
       loadingBar.style.width = percent + "%";
-      loadingProgress.innerText = `Đang tạo bản in: ${percent}%`;
+      loadingProgress.innerText = `Đang xuất PDF: ${percent}%`;
     }
 
-    // Phase 2: html2pdf capture
-    loadingProgress.innerText =
-      "Đang xuất PDF (Bước này có thể mất chút thời gian)...";
+    await worker.save();
+  } finally {
+    // Restore zoom and view
+    livePreview.style.transform = savedTransform;
+    livePreview.style.boxShadow = "0 20px 25px -5px rgba(0,0,0,0.1)";
+    livePreview.style.margin = "auto";
 
-    // Give browser a moment to render the hidden DOM before capturing
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    await html2pdf().set(opt).from(printWrapper).toPdf().save();
-
-    // Cleanup
-    document.body.removeChild(printWrapper);
-
-    loadingBar.style.width = "100%";
-    loadingProgress.innerText = "Hoàn tất!";
-    setTimeout(() => {
-      loadingOverlay.classList.add("opacity-0");
-      loadingCard.classList.add("scale-95");
-      setTimeout(() => {
-        loadingOverlay.classList.add("hidden");
-      }, 300);
-    }, 1000);
-  } catch (error) {
-    console.error("PDF Export failed:", error);
-    alert(
-      "Có lỗi xảy ra khi xuất PDF. Hãy thử tải lại trang hoặc giảm số lượng nhãn.",
-    );
-    loadingOverlay.classList.add("hidden");
-
-    // Attempt cleanup if failed
-    const leftoverWrapper = document.querySelector('div[style*="-9999px"]');
-    if (leftoverWrapper) document.body.removeChild(leftoverWrapper);
+    // Restore display to current record
+    if (typeof updateDisplay === "function") updateDisplay();
+    else if (window.syncA4Preview) window.syncA4Preview();
   }
+
+  loadingBar.style.width = "100%";
+  loadingProgress.innerText = "Hoàn tất!";
+  setTimeout(() => {
+    loadingOverlay.classList.add("opacity-0");
+    loadingCard.classList.add("scale-95");
+    setTimeout(() => loadingOverlay.classList.add("hidden"), 300);
+  }, 1000);
 }
