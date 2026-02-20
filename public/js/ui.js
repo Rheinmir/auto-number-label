@@ -359,42 +359,36 @@ async function printAllLabels() {
     return;
   }
 
-  // Helper to fill a single label element with record data
-  function fillLabelNode(node, record) {
-    const elBoxNum = node.querySelector("#el-boxnum");
-    const elFrom = node.querySelector("#el-from");
-    const elTo = node.querySelector("#el-to");
-    if (elBoxNum) elBoxNum.innerText = record ? record["Hộp số"] : "";
-    if (elFrom)
-      elFrom.innerText = record ? "Từ hồ sơ số: " + record["Từ hồ sơ số"] : "";
-    if (elTo)
-      elTo.innerText = record ? "Đến hồ sơ số: " + record["Đến hồ sơ số"] : "";
-    // Strip edit decorations
-    node.querySelectorAll(".draggable").forEach((d) => {
+  // Helper: create a clean A5->A6 label node from template HTML + fill data
+  function buildLabelNode(record) {
+    const wrapper = document.createElement("div");
+    wrapper.style.cssText =
+      "width:105mm; height:148.5mm; overflow:hidden; position:relative; box-sizing:border-box;";
+
+    const inner = document.createElement("div");
+    inner.style.cssText =
+      "width:148mm; height:210mm; transform:scale(0.709); transform-origin:top left; position:absolute; background:white; font-family:'Times New Roman',Times,serif;";
+    inner.innerHTML = templateHtml;
+
+    if (record) {
+      const elBoxNum = inner.querySelector("#el-boxnum");
+      const elFrom = inner.querySelector("#el-from");
+      const elTo = inner.querySelector("#el-to");
+      if (elBoxNum) elBoxNum.innerText = record["Hộp số"];
+      if (elFrom) elFrom.innerText = "Từ hồ sơ số: " + record["Từ hồ sơ số"];
+      if (elTo) elTo.innerText = "Đến hồ sơ số: " + record["Đến hồ sơ số"];
+    }
+
+    // Remove editing decorations
+    inner.querySelectorAll(".draggable").forEach((d) => {
       d.classList.remove("active");
       d.style.outline = "none";
       d.style.background = "none";
     });
+
+    wrapper.appendChild(inner);
+    return wrapper;
   }
-
-  // Save original content of the live preview to restore afterwards
-  const livePreview = document.getElementById("a4-preview-page");
-  const savedTransform = livePreview.style.transform;
-
-  // Remove zoom and shadow so html2pdf gets 1:1 A4
-  livePreview.style.transform = "scale(1)";
-  livePreview.style.boxShadow = "none";
-  livePreview.style.margin = "0";
-
-  // Get the 4 live slot inner containers
-  const slot1 = document.getElementById("label-canvas");
-  const slot2 = document.getElementById("label-copy-2");
-  const slot3 = document.getElementById("label-copy-3");
-  const slot4 = document.getElementById("label-copy-4");
-  const slots = [slot1, slot2, slot3, slot4];
-
-  // Populate slot1 from templateHtml so it has the correct layout
-  slot1.innerHTML = templateHtml;
 
   try {
     const chunkSize = 4;
@@ -413,62 +407,70 @@ async function printAllLabels() {
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
     };
 
+    // Create a FIXED-POSITION container (in-viewport so html2canvas can see it, but below UI)
+    const printPage = document.createElement("div");
+    printPage.style.cssText = [
+      "position:fixed",
+      "top:0",
+      "left:0",
+      "width:210mm",
+      "height:297mm",
+      "background:white",
+      "display:grid",
+      "grid-template-columns:1fr 1fr",
+      "grid-template-rows:1fr 1fr",
+      "z-index:-1", // Behind everything so user doesn't see it
+      "pointer-events:none",
+    ].join(";");
+    document.body.appendChild(printPage);
+
     const worker = html2pdf().set(opt);
 
     for (let p = 0; p < totalPages; p++) {
-      // Fill the 4 live slots with this page's data
+      // Clear and rebuild the 4 slots for this page
+      printPage.innerHTML = "";
       for (let i = 0; i < chunkSize; i++) {
         const recIdx = p * chunkSize + i;
         const rec = recIdx < total ? processingRecords[recIdx] : null;
-        if (slots[i]) {
-          // Reset inner HTML to template for slot 1
-          if (i === 0) {
-            slots[0].innerHTML = templateHtml;
-          } else {
-            slots[i].innerHTML = templateHtml;
-          }
-          // Fill data into the node
-          fillLabelNode(slots[i], rec);
-          // If no data, blank out the slot visually
-          if (!rec) slots[i].style.opacity = "0";
-          else slots[i].style.opacity = "1";
-        }
+        const node = buildLabelNode(rec);
+
+        // Dashed cut lines between labels
+        node.style.borderRight = i % 2 === 0 ? "1px dashed #ccc" : "";
+        node.style.borderBottom = i < 2 ? "1px dashed #ccc" : "";
+
+        printPage.appendChild(node);
       }
 
-      // Wait a frame for the browser to render
-      await new Promise((r) => setTimeout(r, 200));
+      // Let the browser paint the fixed element before capturing
+      await new Promise((r) => setTimeout(r, 300));
 
-      // Capture the live preview page
       if (p === 0) {
-        await worker.from(livePreview).toContainer().toCanvas().toImg().toPdf();
+        await worker.from(printPage).toContainer().toCanvas().toImg().toPdf();
       } else {
         await worker.get("pdf").then((pdf) => pdf.addPage());
-        await worker.from(livePreview).toContainer().toCanvas().toImg().toPdf();
+        await worker.from(printPage).toContainer().toCanvas().toImg().toPdf();
       }
 
-      // Update progress
       const percent = Math.round(((p + 1) / totalPages) * 100);
       loadingBar.style.width = percent + "%";
       loadingProgress.innerText = `Đang xuất PDF: ${percent}%`;
     }
 
+    document.body.removeChild(printPage);
     await worker.save();
-  } finally {
-    // Restore zoom and view
-    livePreview.style.transform = savedTransform;
-    livePreview.style.boxShadow = "0 20px 25px -5px rgba(0,0,0,0.1)";
-    livePreview.style.margin = "auto";
 
-    // Restore display to current record
-    if (typeof updateDisplay === "function") updateDisplay();
-    else if (window.syncA4Preview) window.syncA4Preview();
+    loadingBar.style.width = "100%";
+    loadingProgress.innerText = "Hoàn tất!";
+    setTimeout(() => {
+      loadingOverlay.classList.add("opacity-0");
+      loadingCard.classList.add("scale-95");
+      setTimeout(() => loadingOverlay.classList.add("hidden"), 300);
+    }, 1000);
+  } catch (error) {
+    console.error("PDF Export failed:", error);
+    alert("Có lỗi khi xuất PDF. Vui lòng thử lại.");
+    loadingOverlay.classList.add("hidden");
+    const stray = document.querySelector("div[style*='z-index:-1']");
+    if (stray) document.body.removeChild(stray);
   }
-
-  loadingBar.style.width = "100%";
-  loadingProgress.innerText = "Hoàn tất!";
-  setTimeout(() => {
-    loadingOverlay.classList.add("opacity-0");
-    loadingCard.classList.add("scale-95");
-    setTimeout(() => loadingOverlay.classList.add("hidden"), 300);
-  }, 1000);
 }
