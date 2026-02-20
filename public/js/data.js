@@ -144,6 +144,8 @@ function updateDisplay() {
 
   document.getElementById("record-status").innerText =
     `${currentIndex + 1} / ${records.length}`;
+
+  if (window.syncA4Preview) window.syncA4Preview();
 }
 
 function nextRecord() {

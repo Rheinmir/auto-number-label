@@ -254,26 +254,47 @@
 
         <!-- Canvas Area -->
         <div class="flex-1 overflow-auto flex items-center justify-center p-8 bg-dot-grid" id="canvas-wrapper">
-            <div id="label-canvas">
-                <div class="printable-border"></div>
+            <div id="a4-preview-page" style="width: 210mm; height: 297mm; background: white; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; position: relative; transform-origin: top center; transition: transform 0.2s ease-out;">
                 
-                <div id="el-logo" class="draggable" style="top: 45px; left: 60px; width: 100px;">
-                    <img src="/assets/logo.png" style="width: 100%; pointer-events: none;">
+                <!-- SLOT 1: Editable Canvas -->
+                <div class="label-slot" style="width: 105mm; height: 148.5mm; overflow: hidden; position: relative; box-sizing: border-box; border-right: 1px dashed #ccc; border-bottom: 1px dashed #ccc;">
+                    <div id="label-canvas" style="width: 148mm; height: 210mm; transform: scale(0.709); transform-origin: top left; position: absolute; background: white;">
+                        <div class="printable-border"></div>
+                        
+                        <div id="el-logo" class="draggable" style="top: 45px; left: 60px; width: 100px;">
+                            <img src="/assets/logo.png" style="width: 100%; pointer-events: none;">
+                        </div>
+
+                        <div id="el-company" class="draggable" style="top: 45px; left: 160px; width: 330px; font-weight:900; font-size: 20px;">TỔNG CÔNG TY PHÂN BÓN VÀ<br>HÓA CHẤT DẦU KHÍ-CTCP</div>
+
+                        <div id="el-dept" class="draggable" style="top: 180px; left: 95px; width: 370px; color: #ed1c24; font-weight: 900; font-size: 34px;">BAN TÀI CHÍNH<br>KẾ TOÁN<br>2003-2016</div>
+
+                        <div id="el-title" class="draggable" style="top: 380px; left: 95px; width: 370px; font-weight: 900; font-size: 78px;">HỘP SỐ</div>
+
+                        <div id="el-boxnum" class="draggable" style="top: 490px; left: 95px; width: 370px; font-weight: 900; font-size: 88px;">2061</div>
+
+                        <div id="el-from" class="draggable" style="top: 660px; left: 100px; width: 350px; font-weight: 700; font-size: 26px; text-align: left; justify-content: flex-start;">Từ hồ sơ số:  4350</div>
+
+                        <div id="el-to" class="draggable" style="top: 710px; left: 100px; width: 350px; font-weight: 700; font-size: 26px; text-align: left; justify-content: flex-start;">Đến hồ sơ số: 4351</div>
+
+                        <div id="el-bottom" class="draggable" style="top: 780px; left: 95px; width: 370px; font-weight: 700; font-size: 26px;">Có thời hạn bảo quản</div>
+                    </div>
                 </div>
 
-                <div id="el-company" class="draggable" style="top: 45px; left: 160px; width: 330px; font-weight:900; font-size: 20px;">TỔNG CÔNG TY PHÂN BÓN VÀ<br>HÓA CHẤT DẦU KHÍ-CTCP</div>
+                <!-- SLOT 2: Read-Only Copy -->
+                <div class="label-slot" style="width: 105mm; height: 148.5mm; overflow: hidden; position: relative; box-sizing: border-box; border-bottom: 1px dashed #ccc;">
+                    <div id="label-copy-2" class="preview-copy" style="width: 148mm; height: 210mm; transform: scale(0.709); transform-origin: top left; position: absolute; pointer-events: none; opacity: 0.7;"></div>
+                </div>
 
-                <div id="el-dept" class="draggable" style="top: 180px; left: 95px; width: 370px; color: #ed1c24; font-weight: 900; font-size: 34px;">BAN TÀI CHÍNH<br>KẾ TOÁN<br>2003-2016</div>
+                <!-- SLOT 3: Read-Only Copy -->
+                <div class="label-slot" style="width: 105mm; height: 148.5mm; overflow: hidden; position: relative; box-sizing: border-box; border-right: 1px dashed #ccc;">
+                    <div id="label-copy-3" class="preview-copy" style="width: 148mm; height: 210mm; transform: scale(0.709); transform-origin: top left; position: absolute; pointer-events: none; opacity: 0.7;"></div>
+                </div>
 
-                <div id="el-title" class="draggable" style="top: 380px; left: 95px; width: 370px; font-weight: 900; font-size: 78px;">HỘP SỐ</div>
-
-                <div id="el-boxnum" class="draggable" style="top: 490px; left: 95px; width: 370px; font-weight: 900; font-size: 88px;">2061</div>
-
-                <div id="el-from" class="draggable" style="top: 660px; left: 100px; width: 350px; font-weight: 700; font-size: 26px; text-align: left; justify-content: flex-start;">Từ hồ sơ số:  4350</div>
-
-                <div id="el-to" class="draggable" style="top: 710px; left: 100px; width: 350px; font-weight: 700; font-size: 26px; text-align: left; justify-content: flex-start;">Đến hồ sơ số: 4351</div>
-
-                <div id="el-bottom" class="draggable" style="top: 780px; left: 95px; width: 370px; font-weight: 700; font-size: 26px;">Có thời hạn bảo quản</div>
+                <!-- SLOT 4: Read-Only Copy -->
+                <div class="label-slot" style="width: 105mm; height: 148.5mm; overflow: hidden; position: relative; box-sizing: border-box;">
+                    <div id="label-copy-4" class="preview-copy" style="width: 148mm; height: 210mm; transform: scale(0.709); transform-origin: top left; position: absolute; pointer-events: none; opacity: 0.7;"></div>
+                </div>
             </div>
         </div>
     </main>

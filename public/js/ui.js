@@ -139,6 +139,14 @@ document.addEventListener("DOMContentLoaded", () => {
         (el) => (el.style.opacity = e.target.value / 100),
       );
     };
+
+  // Add event listeners to sync A4 preview on any style change release
+  const propsPanel = document.getElementById("props-panel");
+  if (propsPanel) {
+    propsPanel.addEventListener("change", syncA4Preview);
+    propsPanel.addEventListener("mouseup", syncA4Preview);
+    propsPanel.addEventListener("keyup", syncA4Preview);
+  }
 });
 
 function setTextAlign(align) {
@@ -205,18 +213,18 @@ function addImage(input) {
 
 // --- Zoom & Fit ---
 function fitToScreen() {
-  const canvas = document.getElementById("label-canvas");
+  const canvas = document.getElementById("a4-preview-page");
   const wrapper = document.getElementById("canvas-wrapper");
   if (!canvas || !wrapper) return;
   setTimeout(() => {
     const availableWidth = wrapper.clientWidth - 80;
     const availableHeight = wrapper.clientHeight - 80;
-    const canvasWidth = 148 * 3.78; // assuming 1mm approx 3.78px
-    const canvasHeight = 210 * 3.78;
+    const canvasWidth = 210 * 3.78; // A4 Width in mm approx to px
+    const canvasHeight = 297 * 3.78; // A4 Height in mm
     const scaleX = availableWidth / canvasWidth;
     const scaleY = availableHeight / canvasHeight;
     let scale = Math.min(scaleX, scaleY, 1);
-    scale = Math.max(scale, 0.4);
+    scale = Math.max(scale, 0.3);
     setZoom(scale);
   }, 100);
 }
@@ -226,11 +234,33 @@ function zoomCanvas(delta) {
 }
 function setZoom(lvl) {
   currentZoom = Math.min(Math.max(lvl, 0.2), 3.0);
-  document.getElementById("label-canvas").style.transform =
+  document.getElementById("a4-preview-page").style.transform =
     `scale(${currentZoom})`;
   document.getElementById("zoom-level").innerText =
     Math.round(currentZoom * 100) + "%";
 }
+
+// --- A4 Preview Sync ---
+function syncA4Preview() {
+  const sourceCanvas = document.getElementById("label-canvas");
+  if (!sourceCanvas) return;
+  const content = sourceCanvas.innerHTML;
+
+  [2, 3, 4].forEach((slot) => {
+    const copy = document.getElementById(`label-copy-${slot}`);
+    if (copy) {
+      copy.innerHTML = content;
+      // Remove visual editing cues from copies
+      const draggables = copy.querySelectorAll(".draggable");
+      draggables.forEach((d) => {
+        d.classList.remove("active");
+        d.style.border = "none";
+        d.style.background = "none";
+      });
+    }
+  });
+}
+window.syncA4Preview = syncA4Preview;
 
 async function printAllLabels() {
   if (typeof records === "undefined" || records.length === 0) {

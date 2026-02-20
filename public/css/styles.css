@@ -114,9 +114,9 @@ input[type=range]::-webkit-slider-runnable-track {
     #main-content { overflow: visible; padding: 0; margin: 0; height: auto; }
     #canvas-wrapper { padding: 0; margin: 0; height: auto; overflow: visible; display: block; }
     
-    #label-canvas { 
-        box-shadow: none; 
-        border: none;
+    #a4-preview-page { 
+        box-shadow: none !important; 
+        border: none !important;
         transform: scale(1) !important;
         margin: 0 auto !important;
         page-break-after: always;

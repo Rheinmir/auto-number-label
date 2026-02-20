@@ -28,6 +28,9 @@ interact(".draggable")
           el.setAttribute("data-y", y);
         });
       },
+      end(event) {
+        if (window.syncA4Preview) window.syncA4Preview();
+      },
     },
   })
   .on("tap", function (event) {
@@ -48,7 +51,10 @@ interact(".draggable").on("doubletap", function (event) {
   const target = event.currentTarget;
   if (!target.querySelector("img") && !target.querySelector("svg")) {
     const newText = prompt("Edit Text:", target.innerText);
-    if (newText !== null) target.innerText = newText;
+    if (newText !== null) {
+      target.innerText = newText;
+      if (window.syncA4Preview) window.syncA4Preview();
+    }
   }
   event.stopPropagation();
 });
@@ -94,6 +100,7 @@ function deleteSelected() {
     selectedElements.forEach((el) => el.remove());
     selectedElements.clear();
     updatePropertiesPanel();
+    if (window.syncA4Preview) window.syncA4Preview();
   }
 }
 
