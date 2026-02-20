@@ -1,0 +1,145 @@
+body { 
+    font-family: 'Inter', sans-serif; 
+    background-color: #f8fafc;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent; 
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1; 
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; 
+}
+
+#label-canvas {
+    width: 148mm;
+    height: 210mm;
+    background: white;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: hidden; /* Ensure content doesn't spill out */
+    transform-origin: top center;
+    transition: transform 0.2s ease-out;
+}
+
+.printable-border {
+    position: absolute;
+    top: 10mm; left: 10mm; right: 10mm; bottom: 10mm;
+    border: 4px double #0054a6;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.draggable {
+    position: absolute;
+    cursor: move; /* Fallback */
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    padding: 4px; /* Default padding */
+    border: 1px transparent dashed; /* Invisible border by default */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: pre-line; /* Handle multiline text */
+    z-index: 10;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.draggable:hover {
+    border-color: #3b82f6; /* Blue-500 */
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.draggable:active {
+    cursor: grabbing;
+}
+
+.draggable.active {
+    border: 2px solid #ef4444; /* Red-500 */
+    background: rgba(239, 68, 68, 0.05);
+    z-index: 100;
+}
+
+/* Dot Grid Background for Canvas Area */
+.bg-dot-grid {
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* Input Range Styling */
+input[type=range] {
+    -webkit-appearance: none; 
+    width: 100%; 
+    background: transparent; 
+}
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    background: #4f46e5;
+    cursor: pointer;
+    margin-top: -6px; 
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    cursor: pointer;
+    background: #e2e8f0;
+    border-radius: 2px;
+}
+
+@media print {
+    .no-print { display: none !important; }
+    body { background: white; padding: 0; margin: 0; overflow: visible; height: auto; }
+    
+    /* When printing all, hide the main app structure */
+    #app-container:has(~ #print-area:not(.hidden)) {
+        display: none !important;
+    }
+    
+    /* Normal Print Preview (single item) */
+    #app-container { display: block; height: auto; overflow: visible; }
+    #main-content { overflow: visible; padding: 0; margin: 0; height: auto; }
+    #canvas-wrapper { padding: 0; margin: 0; height: auto; overflow: visible; display: block; }
+    
+    #label-canvas { 
+        box-shadow: none; 
+        border: none;
+        transform: scale(1) !important;
+        margin: 0 auto !important;
+        page-break-after: always;
+        position: relative !important;
+        left: 0 !important;
+        top: 0 !important;
+    }
+
+    /* Batch Printing (multiple items) */
+    #print-area:not(.hidden) {
+        display: block !important;
+        width: 100%;
+    }
+
+    .print-page {
+        width: 148mm;
+        height: 210mm;
+        position: relative !important;
+        margin: 0 auto !important;
+        page-break-after: always;
+        overflow: hidden;
+        background: white;
+    }
+
+    .printable-border { border-color: #0054a6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

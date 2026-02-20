@@ -330,44 +330,35 @@ const App = () => {
           {Array.from({ length: totalPages }).map((_, pageIdx) => (
             <div
               key={pageIdx}
-              className="grid grid-cols-2 grid-rows-2 w-[210mm] h-[297mm] bg-white"
+              className="relative bg-white w-[210mm] h-[297mm]"
               style={{ pageBreakAfter: "always" }}
             >
-              {[0, 1, 2, 3].map((i) => {
+              {bgImage && (
+                <img
+                  src={bgImage}
+                  className="absolute inset-0 w-full h-full object-contain"
+                  style={{
+                    imageRendering: "crisp-edges",
+                    WebkitImageRendering: "crisp-edges",
+                  }}
+                  alt="print-bg"
+                />
+              )}
+              {positions.map((pos, i) => {
                 const labelNum = startNum + pageIdx * 4 + i;
-                if (labelNum > startNum + totalLabels - 1)
-                  return <div key={i} />;
-
+                if (labelNum > startNum + totalLabels - 1) return null;
                 return (
                   <div
                     key={i}
-                    className="relative overflow-hidden"
-                    style={{ width: "105mm", height: "148.5mm" }}
+                    className="absolute transform -translate-x-1/2 -translate-y-1/2"
+                    style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
                   >
-                    {bgImage && (
-                      <img
-                        src={bgImage}
-                        className="absolute inset-0 w-full h-full object-contain"
-                        style={{
-                          imageRendering: "auto",
-                        }}
-                        alt="print-bg"
-                      />
-                    )}
-                    {positions.map((pos, markerIdx) => (
-                      <div
-                        key={markerIdx}
-                        className="absolute transform -translate-x-1/2 -translate-y-1/2"
-                        style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-                      >
-                        <span
-                          className="text-black font-black leading-none"
-                          style={{ fontSize: `${pos.fontSize}pt` }}
-                        >
-                          {labelNum}
-                        </span>
-                      </div>
-                    ))}
+                    <span
+                      className="text-black font-black leading-none"
+                      style={{ fontSize: `${pos.fontSize}pt` }}
+                    >
+                      {labelNum}
+                    </span>
                   </div>
                 );
               })}
@@ -380,20 +371,8 @@ const App = () => {
         dangerouslySetInnerHTML={{
           __html: `
         @media print {
-          @page { 
-            size: A4 portrait; 
-            margin: 0 !important; 
-          }
-          body { 
-            margin: 0 !important; 
-            padding: 0 !important; 
-            overflow: visible !important;
-          }
-          /* Hide everything except the print-block */
-          #root > div > div:not(.print\\:block) {
-            display: none !important;
-          }
-          .ml-80 { margin-left: 0 !important; padding: 0 !important; }
+          @page { size: A4 portrait; margin: 0; }
+          body { margin: 0; padding: 0; }
         }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #6366f1; cursor: pointer; border: 3px solid #1e293b; }
       `,
