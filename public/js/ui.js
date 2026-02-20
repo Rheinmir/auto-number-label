@@ -241,6 +241,7 @@ function setZoom(lvl) {
 }
 
 // --- A4 Preview Sync ---
+// --- A4 Preview Sync ---
 function syncA4Preview() {
   const sourceCanvas = document.getElementById("label-canvas");
   if (!sourceCanvas) return;
@@ -250,6 +251,7 @@ function syncA4Preview() {
     const copy = document.getElementById(`label-copy-${slot}`);
     if (copy) {
       copy.innerHTML = content;
+
       // Remove visual editing cues from copies
       const draggables = copy.querySelectorAll(".draggable");
       draggables.forEach((d) => {
@@ -257,6 +259,29 @@ function syncA4Preview() {
         d.style.border = "none";
         d.style.background = "none";
       });
+
+      // Inject sequential data if records exist
+      if (typeof records !== "undefined" && window.currentIndex !== undefined) {
+        const recordIdx = window.currentIndex + (slot - 1);
+
+        if (recordIdx < records.length) {
+          const record = records[recordIdx];
+          const elBoxNum = copy.querySelector("#el-boxnum");
+          const elFrom = copy.querySelector("#el-from");
+          const elTo = copy.querySelector("#el-to");
+
+          if (elBoxNum) elBoxNum.innerText = record["Hộp số"];
+          if (elFrom)
+            elFrom.innerText = "Từ hồ sơ số: " + record["Từ hồ sơ số"];
+          if (elTo) elTo.innerText = "Đến hồ sơ số: " + record["Đến hồ sơ số"];
+        } else {
+          // Clear text or hide if there's no data for this slot
+          const textsToClear = copy.querySelectorAll(
+            "#el-boxnum, #el-from, #el-to",
+          );
+          textsToClear.forEach((t) => (t.innerText = ""));
+        }
+      }
     }
   });
 }
