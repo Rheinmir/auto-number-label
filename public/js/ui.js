@@ -314,14 +314,14 @@ async function printAllLabels() {
     const chunkSize = 4;
     const totalPages = Math.ceil(total / chunkSize);
 
-    // Initialize worker with something (placeholder)
-    const worker = html2pdf()
-      .set(opt)
-      .from(document.createElement("div"))
-      .toContainer()
-      .toCanvas()
-      .toImg()
-      .toPdf();
+    // Create a hidden container for all pages to ensure they are rendered by the browser before PDF capture
+    const printWrapper = document.createElement("div");
+    printWrapper.style.position = "absolute";
+    printWrapper.style.left = "-9999px";
+    printWrapper.style.top = "0";
+    printWrapper.style.width = "210mm";
+    printWrapper.style.backgroundColor = "white";
+    document.body.appendChild(printWrapper);
 
     for (let p = 0; p < totalPages; p++) {
       // Create an A4 Page Container
@@ -329,12 +329,11 @@ async function printAllLabels() {
       a4Page.className = "print-page-a4";
       a4Page.style.width = "210mm";
       a4Page.style.height = "297mm";
-      a4Page.style.position = "absolute";
-      a4Page.style.left = "-10000px";
-      a4Page.style.background = "white";
-      a4Page.style.display = "grid";
-      a4Page.style.gridTemplateColumns = "1fr 1fr";
-      a4Page.style.gridTemplateRows = "1fr 1fr";
+      a4Page.style.display = "flex";
+      a4Page.style.flexWrap = "wrap";
+      a4Page.style.alignContent = "flex-start";
+      a4Page.style.pageBreakAfter = "always";
+      a4Page.style.backgroundColor = "white";
 
       // Add up to 4 labels to this page
       for (let i = 0; i < chunkSize; i++) {
@@ -348,7 +347,10 @@ async function printAllLabels() {
         labelWrapper.style.height = "148.5mm";
         labelWrapper.style.overflow = "hidden";
         labelWrapper.style.position = "relative";
-        labelWrapper.style.border = "0.1mm solid #eee"; // Subtle cut lines
+        labelWrapper.style.boxSizing = "border-box";
+        labelWrapper.style.borderRight =
+          i % 2 === 0 ? "1px dashed #ccc" : "none";
+        labelWrapper.style.borderBottom = i < 2 ? "1px dashed #ccc" : "none";
 
         const labelInner = document.createElement("div");
         labelInner.style.width = "148mm";
@@ -378,35 +380,27 @@ async function printAllLabels() {
         a4Page.appendChild(labelWrapper);
       }
 
-      document.body.appendChild(a4Page);
+      printWrapper.appendChild(a4Page);
 
-      if (p === 0) {
-        await worker.from(a4Page).toContainer().toCanvas().toImg().toPdf();
-      } else {
-        await worker
-          .get("pdf")
-          .then((pdf) => {
-            pdf.addPage();
-          })
-          .from(a4Page)
-          .toContainer()
-          .toCanvas()
-          .toImg()
-          .toPdf();
-      }
-
-      document.body.removeChild(a4Page);
-
-      // Update progress UI
-      const percent = Math.round(((p + 1) / totalPages) * 100);
+      // Update progress UI (Phase 1: Generating HTML)
+      const percent = Math.round(((p + 1) / totalPages) * 50);
       loadingBar.style.width = percent + "%";
-      loadingProgress.innerText = percent + "% Hoàn tất";
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      loadingProgress.innerText = `Đang tạo bản in: ${percent}%`;
     }
 
-    loadingProgress.innerText = "Đang xuất file...";
-    await worker.save();
+    // Phase 2: html2pdf capture
+    loadingProgress.innerText =
+      "Đang xuất PDF (Bước này có thể mất chút thời gian)...";
 
+    // Give browser a moment to render the hidden DOM before capturing
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    await html2pdf().set(opt).from(printWrapper).toPdf().save();
+
+    // Cleanup
+    document.body.removeChild(printWrapper);
+
+    loadingBar.style.width = "100%";
     loadingProgress.innerText = "Hoàn tất!";
     setTimeout(() => {
       loadingOverlay.classList.add("opacity-0");
@@ -417,7 +411,13 @@ async function printAllLabels() {
     }, 1000);
   } catch (error) {
     console.error("PDF Export failed:", error);
-    alert("Có lỗi xảy ra khi xuất PDF. Hãy thử lại với số lượng nhãn ít hơn.");
+    alert(
+      "Có lỗi xảy ra khi xuất PDF. Hãy thử tải lại trang hoặc giảm số lượng nhãn.",
+    );
     loadingOverlay.classList.add("hidden");
+
+    // Attempt cleanup if failed
+    const leftoverWrapper = document.querySelector('div[style*="-9999px"]');
+    if (leftoverWrapper) document.body.removeChild(leftoverWrapper);
   }
 }
