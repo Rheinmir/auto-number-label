@@ -419,7 +419,7 @@ async function printAllLabels() {
       "display:grid",
       "grid-template-columns:1fr 1fr",
       "grid-template-rows:1fr 1fr",
-      "z-index:-1", // Behind everything so user doesn't see it
+      "z-index:99", // Below loading overlay (z:100) but visible to html2canvas
       "pointer-events:none",
     ].join(";");
     document.body.appendChild(printPage);
