@@ -19,8 +19,7 @@ function handleExcelUpload(event) {
   reader.readAsArrayBuffer(file);
 }
 
-// Global variable to store processed record objects
-let records = [];
+// Global variable declared in app.js
 
 /**
  * Main logic to process raw Excel JSON data into aggregated box records.
