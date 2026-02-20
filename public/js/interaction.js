@@ -16,8 +16,11 @@ interact(".draggable")
       move(event) {
         if (selectedElements.size === 0) return;
 
-        const dx = event.dx / currentZoom;
-        const dy = event.dy / currentZoom;
+        // The A4 page is scaled by currentZoom, AND the label-canvas is scaled by 0.709
+        // We must divide by BOTH to get true local pixels for the draggable elements
+        const totalScale = currentZoom * 0.709;
+        const dx = event.dx / totalScale;
+        const dy = event.dy / totalScale;
 
         selectedElements.forEach((el) => {
           const x = (parseFloat(el.getAttribute("data-x")) || 0) + dx;
@@ -60,14 +63,33 @@ interact(".draggable").on("doubletap", function (event) {
 });
 
 // Canvas Click to Clear Selection
-document.getElementById("label-canvas").addEventListener("click", (e) => {
+document.getElementById("a4-preview-page").addEventListener("click", (e) => {
   if (
+    e.target.id === "a4-preview-page" ||
     e.target.id === "label-canvas" ||
-    e.target.classList.contains("printable-border")
+    e.target.classList.contains("printable-border") ||
+    e.target.classList.contains("label-slot")
   ) {
     clearSelection();
   }
 });
+
+// Mouse Wheel to Zoom
+const canvasWrapper = document.getElementById("canvas-wrapper");
+if (canvasWrapper) {
+  canvasWrapper.addEventListener(
+    "wheel",
+    (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        // Determine zoom direction: scroll up (negative deltaY) zooms in
+        const delta = e.deltaY < 0 ? 0.05 : -0.05;
+        if (window.zoomCanvas) window.zoomCanvas(delta);
+      }
+    },
+    { passive: false },
+  );
+}
 
 // Keyboard Shortcuts (Global)
 document.addEventListener("keydown", (e) => {
