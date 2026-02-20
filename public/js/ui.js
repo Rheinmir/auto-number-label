@@ -398,7 +398,7 @@ async function printAllLabels() {
       "grid-template-columns:1fr 1fr",
       "grid-template-rows:1fr 1fr",
       "z-index:99",
-      "opacity:0.002", // Nearly invisible to human, but renderable by html2canvas
+      // No opacity: loading overlay (z:100, fully opaque) hides this from users
       "pointer-events:none",
       "overflow:hidden",
     ].join(";");
