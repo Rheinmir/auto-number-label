@@ -306,83 +306,107 @@ async function printAllLabels() {
     filename: `Nhan_PVFCCo_${new Date().getTime()}.pdf`,
     image: { type: "jpeg", quality: 0.98 },
     html2canvas: { scale: 2, useCORS: true, logging: false },
-    jsPDF: { unit: "mm", format: "a5", orientation: "portrait" },
+    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
   };
 
-  // We will build the PDF bit by bit
-  const worker = html2pdf()
-    .set(opt)
-    .from(mainCanvas)
-    .toContainer()
-    .toCanvas()
-    .toImg()
-    .toPdf();
-
   try {
-    const batchSize = 1; // html2pdf is heavy, process 1 by 1 for stability
+    // Process in chunks of 4 for A4 (2x2 grid)
+    const chunkSize = 4;
+    const totalPages = Math.ceil(total / chunkSize);
 
-    for (let i = 0; i < total; i++) {
-      const record = processingRecords[i];
+    // Initialize worker with something (placeholder)
+    const worker = html2pdf()
+      .set(opt)
+      .from(document.createElement("div"))
+      .toContainer()
+      .toCanvas()
+      .toImg()
+      .toPdf();
 
-      // Use a temporary DIV for each page
-      const page = document.createElement("div");
-      page.className = "print-page";
-      page.style.width = "148mm";
-      page.style.height = "210mm";
-      page.style.position = "absolute";
-      page.style.left = "-10000px"; // Hide from view but keep in DOM for rendering
-      page.style.background = "white";
-      page.innerHTML = templateHtml;
+    for (let p = 0; p < totalPages; p++) {
+      // Create an A4 Page Container
+      const a4Page = document.createElement("div");
+      a4Page.className = "print-page-a4";
+      a4Page.style.width = "210mm";
+      a4Page.style.height = "297mm";
+      a4Page.style.position = "absolute";
+      a4Page.style.left = "-10000px";
+      a4Page.style.background = "white";
+      a4Page.style.display = "grid";
+      a4Page.style.gridTemplateColumns = "1fr 1fr";
+      a4Page.style.gridTemplateRows = "1fr 1fr";
 
-      // Fill data
-      const elBoxNum = page.querySelector("#el-boxnum");
-      const elFrom = page.querySelector("#el-from");
-      const elTo = page.querySelector("#el-to");
+      // Add up to 4 labels to this page
+      for (let i = 0; i < chunkSize; i++) {
+        const recordIdx = p * chunkSize + i;
+        if (recordIdx >= total) break;
 
-      if (elBoxNum) elBoxNum.innerText = record["Hộp số"];
-      if (elFrom) elFrom.innerText = "Từ hồ sơ số: " + record["Từ hồ sơ số"];
-      if (elTo) elTo.innerText = "Đến hồ sơ số: " + record["Đến hồ sơ số"];
+        const record = processingRecords[recordIdx];
 
-      const draggables = page.querySelectorAll(".draggable");
-      draggables.forEach((d) => {
-        d.classList.remove("active");
-        d.style.border = "none";
-        d.style.background = "none";
-      });
+        const labelWrapper = document.createElement("div");
+        labelWrapper.style.width = "105mm";
+        labelWrapper.style.height = "148.5mm";
+        labelWrapper.style.overflow = "hidden";
+        labelWrapper.style.position = "relative";
+        labelWrapper.style.border = "0.1mm solid #eee"; // Subtle cut lines
 
-      document.body.appendChild(page);
+        const labelInner = document.createElement("div");
+        labelInner.style.width = "148mm";
+        labelInner.style.height = "210mm";
+        labelInner.style.transform = "scale(0.709)"; // Scale A5 down to A6
+        labelInner.style.transformOrigin = "top left";
+        labelInner.style.position = "absolute";
+        labelInner.innerHTML = templateHtml;
 
-      if (i === 0) {
-        await worker.from(page).toContainer().toCanvas().toImg().toPdf();
+        // Fill data
+        const elBoxNum = labelInner.querySelector("#el-boxnum");
+        const elFrom = labelInner.querySelector("#el-from");
+        const elTo = labelInner.querySelector("#el-to");
+
+        if (elBoxNum) elBoxNum.innerText = record["Hộp số"];
+        if (elFrom) elFrom.innerText = "Từ hồ sơ số: " + record["Từ hồ sơ số"];
+        if (elTo) elTo.innerText = "Đến hồ sơ số: " + record["Đến hồ sơ số"];
+
+        const draggables = labelInner.querySelectorAll(".draggable");
+        draggables.forEach((d) => {
+          d.classList.remove("active");
+          d.style.border = "none";
+          d.style.background = "none";
+        });
+
+        labelWrapper.appendChild(labelInner);
+        a4Page.appendChild(labelWrapper);
+      }
+
+      document.body.appendChild(a4Page);
+
+      if (p === 0) {
+        await worker.from(a4Page).toContainer().toCanvas().toImg().toPdf();
       } else {
         await worker
           .get("pdf")
           .then((pdf) => {
             pdf.addPage();
           })
-          .from(page)
+          .from(a4Page)
           .toContainer()
           .toCanvas()
           .toImg()
           .toPdf();
       }
 
-      // Cleanup
-      document.body.removeChild(page);
+      document.body.removeChild(a4Page);
 
       // Update progress UI
-      if (i % 5 === 0 || i === total - 1) {
-        const percent = Math.round(((i + 1) / total) * 100);
-        loadingBar.style.width = percent + "%";
-        loadingProgress.innerText = percent + "% Hoàn tất";
-        await new Promise((resolve) => setTimeout(resolve, 10));
-      }
+      const percent = Math.round(((p + 1) / totalPages) * 100);
+      loadingBar.style.width = percent + "%";
+      loadingProgress.innerText = percent + "% Hoàn tất";
+      await new Promise((resolve) => setTimeout(resolve, 50));
     }
 
     loadingProgress.innerText = "Đang xuất file...";
     await worker.save();
 
-    // Success UI
     loadingProgress.innerText = "Hoàn tất!";
     setTimeout(() => {
       loadingOverlay.classList.add("opacity-0");
