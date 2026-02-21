@@ -69,12 +69,17 @@ function processExcelData(data) {
         groupedByBox[boxNum] = { records: [], thbq: "" };
       }
       groupedByBox[boxNum].records.push(recordNum);
-      // Capture the first non-empty THBQ value for this box
-      if (!groupedByBox[boxNum].thbq && thbqKey && row[thbqKey]) {
-        // Normalize: replace all whitespace/newlines with single space
-        groupedByBox[boxNum].thbq = String(row[thbqKey])
+      // THBQ: "Vĩnh viễn" wins — scan all rows, override với mức cao nhất
+      if (thbqKey && row[thbqKey]) {
+        const rawVal = String(row[thbqKey])
           .replace(/[\s\n\r]+/g, " ")
           .trim();
+        const alreadyVinhVien = groupedByBox[boxNum].thbq
+          .toLowerCase()
+          .includes("vĩnh viễn");
+        if (!alreadyVinhVien) {
+          groupedByBox[boxNum].thbq = rawVal; // always overwrite until we find Vĩnh viễn
+        }
       }
     }
   });
