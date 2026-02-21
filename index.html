@@ -40,15 +40,28 @@
              <div class="space-y-3 mt-4">
                 <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tools</h3>
                 <div class="grid grid-cols-2 gap-2">
-                    <button onclick="addText()" class="flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 hover:border-indigo-300 text-slate-600 hover:text-indigo-600 py-2 rounded-lg transition-all shadow-sm">
+                    <button onclick="addText()" class="flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 hover:border-indigo-300 text-slate-600 hover:text-indigo-600 py-2 rounded-lg transition-all shadow-sm" title="Add Text">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                        <span class="text-xs font-medium">Add Text</span>
+                        <span class="text-xs font-medium">Text</span>
                     </button>
-                    <button onclick="document.getElementById('img-upload').click()" class="flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 hover:border-indigo-300 text-slate-600 hover:text-indigo-600 py-2 rounded-lg transition-all shadow-sm">
+                    <button onclick="document.getElementById('img-upload').click()" class="flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 hover:border-indigo-300 text-slate-600 hover:text-indigo-600 py-2 rounded-lg transition-all shadow-sm" title="Add Image">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        <span class="text-xs font-medium">Add Image</span>
+                        <span class="text-xs font-medium">Image</span>
                     </button>
                     <input type="file" id="img-upload" accept="image/*" class="hidden" onchange="addImage(this)">
+                </div>
+
+                <!-- Layout Management -->
+                <div class="grid grid-cols-2 gap-2 mt-2">
+                    <button onclick="exportLayout()" class="flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:border-slate-300 text-slate-600 py-2 rounded-lg transition-all shadow-sm text-xs font-medium" title="Export Current Layout">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Export Layout
+                    </button>
+                    <button onclick="document.getElementById('layout-upload').click()" class="flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:border-slate-300 text-slate-600 py-2 rounded-lg transition-all shadow-sm text-xs font-medium" title="Import Layout">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                        Import Layout
+                    </button>
+                    <input type="file" id="layout-upload" accept=".json" class="hidden" onchange="importLayout(event)">
                 </div>
             </div>
 

@@ -211,6 +211,97 @@ function addImage(input) {
   }
 }
 
+// --- Export & Import Layout ---
+window.exportLayout = function () {
+  const canvas = document.getElementById("label-canvas");
+  if (!canvas) return;
+
+  const draggables = Array.from(canvas.querySelectorAll(".draggable"));
+  const layout = draggables.map((el) => {
+    const styles = {};
+    const propsToSave = [
+      "top",
+      "left",
+      "width",
+      "height",
+      "fontSize",
+      "fontWeight",
+      "color",
+      "textAlign",
+      "justifyContent",
+      "lineHeight",
+      "transform",
+    ];
+    for (const prop of propsToSave) {
+      if (el.style[prop]) styles[prop] = el.style[prop];
+    }
+
+    return {
+      id: el.id || "",
+      className: el.className.replace("active", "").trim(),
+      styles: styles,
+      dataX: el.getAttribute("data-x") || "0",
+      dataY: el.getAttribute("data-y") || "0",
+      innerHTML: el.innerHTML,
+    };
+  });
+
+  const dataStr =
+    "data:text/json;charset=utf-8," +
+    encodeURIComponent(JSON.stringify(layout, null, 2));
+  const dlAnchorElem = document.createElement("a");
+  dlAnchorElem.setAttribute("href", dataStr);
+  dlAnchorElem.setAttribute("download", "label_layout.json");
+  dlAnchorElem.click();
+};
+
+window.importLayout = function (event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const layoutData = JSON.parse(e.target.result);
+      const canvas = document.getElementById("label-canvas");
+      if (!canvas) return;
+
+      // Clear existing layout (leaving the .printable-border intact if possible)
+      const oldDraggables = canvas.querySelectorAll(".draggable");
+      oldDraggables.forEach((el) => el.remove());
+
+      layoutData.forEach((item) => {
+        const el = document.createElement("div");
+        if (item.id) el.id = item.id;
+        el.className = item.className;
+        el.innerHTML = item.innerHTML;
+
+        el.setAttribute("data-x", item.dataX);
+        el.setAttribute("data-y", item.dataY);
+
+        // Restore styles
+        if (item.styles) {
+          Object.keys(item.styles).forEach((prop) => {
+            el.style[prop] = item.styles[prop];
+          });
+        }
+
+        canvas.appendChild(el);
+      });
+
+      if (typeof clearSelection === "function") clearSelection();
+      if (window.syncA4Preview) window.syncA4Preview();
+
+      alert("Đã tải layout thành công!");
+    } catch (err) {
+      console.error(err);
+      alert("File layout không hợp lệ!");
+    }
+    event.target.value = "";
+  };
+  reader.readAsText(file);
+};
+
 // --- Zoom & Fit ---
 function fitToScreen() {
   const canvas = document.getElementById("a4-preview-page");
