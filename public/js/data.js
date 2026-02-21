@@ -34,6 +34,7 @@ function processExcelData(data) {
   // We look for "Hộp số" and "Hồ sơ số" (flexible naming)
   let boxKey = "";
   let recordKey = "";
+  let thbqKey = "";
 
   if (data.length > 0) {
     const firstRow = data[0];
@@ -41,6 +42,7 @@ function processExcelData(data) {
       const kLow = key.toLowerCase().replace(/\s/g, "");
       if (kLow.includes("hộpsố") && !kLow.includes("cũ")) boxKey = key;
       if (kLow.includes("hồsơsố") && !kLow.includes("cũ")) recordKey = key;
+      if (kLow.includes("thbq")) thbqKey = key;
     }
   }
 
@@ -63,18 +65,21 @@ function processExcelData(data) {
     // Only process if we have a record number (skips headers/empty rows)
     if (recordNum && recordNum !== "") {
       if (!groupedByBox[boxNum]) {
-        groupedByBox[boxNum] = [];
+        groupedByBox[boxNum] = { records: [], thbq: "" };
       }
-      groupedByBox[boxNum].push(recordNum);
+      groupedByBox[boxNum].records.push(recordNum);
+      // Capture the first non-empty THBQ value for this box
+      if (!groupedByBox[boxNum].thbq && thbqKey && row[thbqKey]) {
+        groupedByBox[boxNum].thbq = String(row[thbqKey]).trim();
+      }
     }
   });
 
   // 3. Flatten into simple records list
   records = [];
   for (let box in groupedByBox) {
-    const nums = groupedByBox[box];
-    // Sort to find range (assuming they can be cast to numbers or just string sort)
-    // We try to handle numeric sort if possible
+    const entry = groupedByBox[box];
+    const nums = entry.records;
     nums.sort((a, b) => {
       const na = parseInt(a);
       const nb = parseInt(b);
@@ -86,6 +91,7 @@ function processExcelData(data) {
       "Hộp số": box,
       "Từ hồ sơ số": nums[0],
       "Đến hồ sơ số": nums[nums.length - 1],
+      THBQ: entry.thbq,
       "Dữ liệu gốc": nums,
     });
   }
@@ -141,6 +147,15 @@ function updateDisplay() {
     "Từ hồ sơ số: " + record["Từ hồ sơ số"];
   document.getElementById("el-to").innerText =
     "Đến hồ sơ số: " + record["Đến hồ sơ số"];
+
+  // THBQ: if "Vĩnh viễn" show alternate text
+  const thbqVal = (record["THBQ"] || "").toLowerCase();
+  const elBottom = document.getElementById("el-bottom");
+  if (elBottom) {
+    elBottom.innerText = thbqVal.includes("vĩnh viễn")
+      ? "Vĩnh Viễn"
+      : "Có thời hạn bảo quản";
+  }
 
   document.getElementById("record-status").innerText =
     `${currentIndex + 1} / ${records.length}`;

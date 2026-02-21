@@ -368,6 +368,13 @@ function syncA4Preview() {
           if (elFrom)
             elFrom.innerText = "Từ hồ sơ số: " + record["Từ hồ sơ số"];
           if (elTo) elTo.innerText = "Đến hồ sơ số: " + record["Đến hồ sơ số"];
+          const elBotCopy = copy.querySelector("#el-bottom");
+          if (elBotCopy) {
+            const thbqCopy = (record["THBQ"] || "").toLowerCase();
+            elBotCopy.innerText = thbqCopy.includes("vĩnh viễn")
+              ? "Vĩnh Viễn"
+              : "Có thời hạn bảo quản";
+          }
         } else {
           // Clear text or hide if there's no data for this slot
           const textsToClear = copy.querySelectorAll(
@@ -504,6 +511,13 @@ async function printAllLabels() {
       if (elBoxNum) elBoxNum.innerText = record["Hộp số"];
       if (elFrom) elFrom.innerText = "Từ hồ sơ số: " + record["Từ hồ sơ số"];
       if (elTo) elTo.innerText = "Đến hồ sơ số: " + record["Đến hồ sơ số"];
+      const elBotPdf = container.querySelector("#el-bottom");
+      if (elBotPdf) {
+        const thbqPdf = (record["THBQ"] || "").toLowerCase();
+        elBotPdf.innerText = thbqPdf.includes("vĩnh viễn")
+          ? "Vĩnh Viễn"
+          : "Có thời hạn bảo quản";
+      }
     }
 
     // Copy the printable border (scaled)
