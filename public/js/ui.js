@@ -591,12 +591,14 @@ async function printAllLabels() {
       const pos = positions[slot];
       pdf.addImage(imgData, "JPEG", pos.x, pos.y, LABEL_W_MM, LABEL_H_MM);
 
-      // Dashed separator lines
-      pdf.setDrawColor(150, 150, 150);
-      pdf.setLineDashPattern([2, 2], 0);
-      if (slot === 0 || slot === 2)
-        pdf.line(LABEL_W_MM, pos.y, LABEL_W_MM, pos.y + LABEL_H_MM);
-      if (slot === 0 || slot === 1) pdf.line(0, LABEL_H_MM, 210, LABEL_H_MM);
+      // Draw dashed separators AFTER all labels on this page are placed (so lines sit on top)
+      if (slot === 3 || i === total - 1) {
+        pdf.setDrawColor(150, 150, 150);
+        pdf.setLineDashPattern([2, 2], 0);
+        pdf.line(LABEL_W_MM, 0, LABEL_W_MM, LABEL_H_MM * 2); // vertical centre
+        pdf.line(0, LABEL_H_MM, 210, LABEL_H_MM); // horizontal centre
+        pdf.setLineDashPattern([], 0); // reset dash
+      }
 
       const percent = Math.round(((i + 1) / total) * 100);
       loadingBar.style.width = percent + "%";
