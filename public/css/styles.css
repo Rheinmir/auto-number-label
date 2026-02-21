@@ -33,7 +33,7 @@ body {
 .printable-border {
     position: absolute;
     top: 10mm; left: 10mm; right: 10mm; bottom: 10mm;
-    border: 4px double #0054a6;
+    border: 4px double #000;
     pointer-events: none;
     z-index: 5;
 }
@@ -56,8 +56,8 @@ body {
 }
 
 .draggable:hover {
-    border-color: #3b82f6; /* Blue-500 */
-    background: rgba(59, 130, 246, 0.05);
+    border-color: #333;
+    background: rgba(0, 0, 0, 0.03);
 }
 
 .draggable:active {
@@ -65,8 +65,8 @@ body {
 }
 
 .draggable.active {
-    border: 2px solid #ef4444; /* Red-500 */
-    background: rgba(239, 68, 68, 0.05);
+    border: 2px solid #111;
+    background: rgba(0, 0, 0, 0.04);
     z-index: 100;
 }
 
@@ -87,7 +87,7 @@ input[type=range]::-webkit-slider-thumb {
     height: 16px;
     width: 16px;
     border-radius: 50%;
-    background: #4f46e5;
+    background: #111;
     cursor: pointer;
     margin-top: -6px; 
     box-shadow: 0 1px 3px rgba(0,0,0,0.3);
@@ -141,5 +141,5 @@ input[type=range]::-webkit-slider-runnable-track {
         background: white;
     }
 
-    .printable-border { border-color: #0054a6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .printable-border { border-color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
