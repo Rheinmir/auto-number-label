@@ -434,61 +434,46 @@ async function printAllLabels() {
     return;
   }
 
-  // Get reference to the live canvas whose rendering is guaranteed to match preview
-  const liveCanvas = document.getElementById("label-canvas");
+  // Helper: create a clean A5->A6 label node from template HTML + fill data
+  function buildLabelNode(record) {
+    const wrapper = document.createElement("div");
+    wrapper.style.cssText =
+      "width:105mm; height:148.5mm; overflow:hidden; position:relative; box-sizing:border-box;";
 
-  // Bake all current drag transforms into top/left so positions are stable during swaps
-  liveCanvas.querySelectorAll(".draggable").forEach((d) => {
-    const dx = parseFloat(d.getAttribute("data-x")) || 0;
-    const dy = parseFloat(d.getAttribute("data-y")) || 0;
-    if (dx !== 0 || dy !== 0) {
-      d.style.left = (parseFloat(d.style.left) || 0) + dx + "px";
-      d.style.top = (parseFloat(d.style.top) || 0) + dy + "px";
-      d.style.transform = "none";
-      d.setAttribute("data-x", 0);
-      d.setAttribute("data-y", 0);
+    const inner = document.createElement("div");
+    inner.style.cssText =
+      "width:148mm; height:210mm; transform:scale(0.709); transform-origin:top left; position:absolute; background:white; font-family:'Times New Roman',Times,serif;";
+    inner.innerHTML = templateHtml;
+
+    if (record) {
+      const elBoxNum = inner.querySelector("#el-boxnum");
+      const elFrom = inner.querySelector("#el-from");
+      const elTo = inner.querySelector("#el-to");
+      if (elBoxNum) elBoxNum.innerText = record["Hộp số"];
+      if (elFrom) elFrom.innerText = "Từ hồ sơ số: " + record["Từ hồ sơ số"];
+      if (elTo) elTo.innerText = "Đến hồ sơ số: " + record["Đến hồ sơ số"];
     }
-  });
 
-  // Save the original data fields so we can restore them after each capture
-  const origBoxNum = liveCanvas.querySelector("#el-boxnum");
-  const origFrom = liveCanvas.querySelector("#el-from");
-  const origTo = liveCanvas.querySelector("#el-to");
-  const savedBoxNum = origBoxNum ? origBoxNum.innerText : "";
-  const savedFrom = origFrom ? origFrom.innerText : "";
-  const savedTo = origTo ? origTo.innerText : "";
+    // Remove editing decorations and bake transforms
+    inner.querySelectorAll(".draggable").forEach((d) => {
+      d.classList.remove("active");
+      d.style.outline = "none";
+      d.style.background = "none";
 
-  // Ensure editing decorations are hidden during capture
-  liveCanvas.querySelectorAll(".draggable").forEach((d) => {
-    d.classList.remove("active");
-    d._savedBorder = d.style.border;
-    d._savedBg = d.style.background;
-    d.style.border = "none";
-    d.style.background = "none";
-  });
-
-  // Helper: swap in record data, capture the live canvas, return the canvas element
-  async function captureRecord(record) {
-    if (origBoxNum) origBoxNum.innerText = record ? record["Hộp số"] : "";
-    if (origFrom)
-      origFrom.innerText = record
-        ? "Từ hồ sơ số: " + record["Từ hồ sơ số"]
-        : "";
-    if (origTo)
-      origTo.innerText = record
-        ? "Đến hồ sơ số: " + record["Đến hồ sơ số"]
-        : "";
-
-    // Give the browser a tick to paint the new text
-    await new Promise((r) => setTimeout(r, 20));
-
-    return html2canvas(liveCanvas, {
-      scale: 1.5,
-      useCORS: true,
-      allowTaint: true,
-      logging: false,
-      backgroundColor: "#ffffff",
+      // Bake translate(x,y) into top/left because html2canvas struggles with nested transforms
+      const dx = parseFloat(d.getAttribute("data-x")) || 0;
+      const dy = parseFloat(d.getAttribute("data-y")) || 0;
+      if (dx !== 0 || dy !== 0) {
+        const currentLeft = parseFloat(d.style.left) || 0;
+        const currentTop = parseFloat(d.style.top) || 0;
+        d.style.left = currentLeft + dx + "px";
+        d.style.top = currentTop + dy + "px";
+        d.style.transform = "none";
+      }
     });
+
+    wrapper.appendChild(inner);
+    return wrapper;
   }
 
   try {
@@ -497,6 +482,30 @@ async function printAllLabels() {
     const totalPages = Math.ceil(total / chunkSize);
     const filename = `Nhan_PVFCCo_${new Date().getTime()}.pdf`;
 
+    // A4 dimensions in mm
+    const PAGE_W_MM = 210;
+    const PAGE_H_MM = 297;
+
+    // Create a fixed-position container that is VISIBLE in the viewport
+    // z-index:99 keeps it below the loading overlay (z:100) but renderable by html2canvas
+    const printPage = document.createElement("div");
+    printPage.style.cssText = [
+      "position:fixed",
+      "top:0",
+      "left:0",
+      `width:${PAGE_W_MM}mm`,
+      `height:${PAGE_H_MM}mm`,
+      "background:white",
+      "display:grid",
+      "grid-template-columns:1fr 1fr",
+      "grid-template-rows:1fr 1fr",
+      "z-index:99",
+      // No opacity: loading overlay (z:100, fully opaque) hides this from users
+      "pointer-events:none",
+      "overflow:hidden",
+    ].join(";");
+    document.body.appendChild(printPage);
+
     // Initialize jsPDF
     const pdf = new jsPDF({
       unit: "mm",
@@ -504,60 +513,43 @@ async function printAllLabels() {
       orientation: "portrait",
     });
 
-    // A4 grid: 2 columns x 2 rows, each cell = A6 (105 x 148.5mm)
-    const LABEL_W_MM = 105;
-    const LABEL_H_MM = 148.5;
-    const positions = [
-      { x: 0, y: 0 },
-      { x: LABEL_W_MM, y: 0 },
-      { x: 0, y: LABEL_H_MM },
-      { x: LABEL_W_MM, y: LABEL_H_MM },
-    ];
-
-    let pageCreated = false;
-
-    for (let i = 0; i < total; i++) {
-      const slot = i % chunkSize;
-      const rec = processingRecords[i];
-
-      // Start a new PDF page for every 4 labels
-      if (slot === 0) {
-        if (pageCreated) pdf.addPage();
-        pageCreated = true;
+    for (let p = 0; p < totalPages; p++) {
+      // Populate the 4 slots
+      printPage.innerHTML = "";
+      for (let i = 0; i < chunkSize; i++) {
+        const recIdx = p * chunkSize + i;
+        const rec = recIdx < total ? processingRecords[recIdx] : null;
+        const node = buildLabelNode(rec);
+        node.style.borderRight = i % 2 === 0 ? "1px dashed #aaa" : "";
+        node.style.borderBottom = i < 2 ? "1px dashed #aaa" : "";
+        printPage.appendChild(node);
       }
 
-      // Capture the live canvas with record data swapped in
-      const capturedCanvas = await captureRecord(rec);
-      const imgData = capturedCanvas.toDataURL("image/jpeg", 0.95);
+      // Wait for browser paint (shorter delay = faster export)
+      await new Promise((r) => setTimeout(r, 80));
 
-      const pos = positions[slot];
-      pdf.addImage(imgData, "JPEG", pos.x, pos.y, LABEL_W_MM, LABEL_H_MM);
+      // Capture with html2canvas directly
+      const canvas = await html2canvas(printPage, {
+        scale: 1.5,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
 
-      // Draw dashed separators
-      pdf.setDrawColor(150, 150, 150);
-      pdf.setLineDashPattern([2, 2], 0);
-      if (slot === 0 || slot === 2) {
-        pdf.line(LABEL_W_MM, pos.y, LABEL_W_MM, pos.y + LABEL_H_MM);
-      }
-      if (slot === 0 || slot === 1) {
-        pdf.line(0, LABEL_H_MM, 210, LABEL_H_MM);
-      }
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      const imgW_mm = PAGE_W_MM;
+      const imgH_mm = (canvas.height / canvas.width) * PAGE_W_MM;
 
-      const percent = Math.round(((i + 1) / total) * 100);
+      if (p > 0) pdf.addPage();
+      pdf.addImage(imgData, "JPEG", 0, 0, imgW_mm, imgH_mm);
+
+      const percent = Math.round(((p + 1) / totalPages) * 100);
       loadingBar.style.width = percent + "%";
       loadingProgress.innerText = `Đang xuất PDF: ${percent}%`;
     }
 
-    // Restore original data and decorations on the live canvas
-    if (origBoxNum) origBoxNum.innerText = savedBoxNum;
-    if (origFrom) origFrom.innerText = savedFrom;
-    if (origTo) origTo.innerText = savedTo;
-    liveCanvas.querySelectorAll(".draggable").forEach((d) => {
-      if (d._savedBorder !== undefined) d.style.border = d._savedBorder;
-      if (d._savedBg !== undefined) d.style.background = d._savedBg;
-    });
-    if (window.syncA4Preview) window.syncA4Preview();
-
+    document.body.removeChild(printPage);
     pdf.save(filename);
 
     loadingBar.style.width = "100%";
@@ -571,5 +563,7 @@ async function printAllLabels() {
     console.error("PDF Export failed:", error);
     alert("Có lỗi khi xuất PDF: " + error.message);
     loadingOverlay.classList.add("hidden");
+    const stray = document.querySelector("div[style*='z-index:99']");
+    if (stray) document.body.removeChild(stray);
   }
 }
