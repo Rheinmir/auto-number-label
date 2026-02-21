@@ -454,11 +454,22 @@ async function printAllLabels() {
       if (elTo) elTo.innerText = "Đến hồ sơ số: " + record["Đến hồ sơ số"];
     }
 
-    // Remove editing decorations
+    // Remove editing decorations and bake transforms
     inner.querySelectorAll(".draggable").forEach((d) => {
       d.classList.remove("active");
       d.style.outline = "none";
       d.style.background = "none";
+
+      // Bake translate(x,y) into top/left because html2canvas struggles with nested transforms
+      const dx = parseFloat(d.getAttribute("data-x")) || 0;
+      const dy = parseFloat(d.getAttribute("data-y")) || 0;
+      if (dx !== 0 || dy !== 0) {
+        const currentLeft = parseFloat(d.style.left) || 0;
+        const currentTop = parseFloat(d.style.top) || 0;
+        d.style.left = currentLeft + dx + "px";
+        d.style.top = currentTop + dy + "px";
+        d.style.transform = "none";
+      }
     });
 
     wrapper.appendChild(inner);
