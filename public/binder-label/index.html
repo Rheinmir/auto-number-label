@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nhãn Bìa Hồ Sơ — PVFCCo</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    /************************************************************
+     * RESET & VARIABLES
+     ************************************************************/
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #f5f5f5;
+      --surface:   #ffffff;
+      --border:    #d1d5db;
+      --text:      #111111;
+      --muted:     #6b7280;
+      --primary:   #111111;
+      --pri-dark:  #000000;
+      --success:   #333333;
+      --suc-dark:  #111111;
+      --radius:    10px;
+      --shadow:    0 2px 8px rgba(0,0,0,.08);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /************************************************************
+     * SCREEN LAYOUT
+     ************************************************************/
+    .app-shell {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      grid-template-rows: 56px 1fr;
+      min-height: 100vh;
+    }
+
+    /* ---- TOPBAR ---- */
+    .topbar {
+      grid-column: 1 / -1;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 12px;
+      box-shadow: var(--shadow);
+      z-index: 10;
+    }
+    .topbar-logo {
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: -.5px;
+      color: var(--primary);
+    }
+    .topbar-divider { width: 1px; height: 20px; background: var(--border); }
+    .topbar-title { font-size: .95rem; font-weight: 600; color: var(--text); }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+    /* ---- SIDEBAR ---- */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .sidebar-section {
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      padding: 12px 8px 4px;
+    }
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-size: .88rem;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .sidebar-item.active,
+    .sidebar-item:hover { background: #f3f4f6; color: #111; }
+    .sidebar-item.active { font-weight: 600; }
+
+    /* ---- MAIN ---- */
+    .main {
+      padding: 28px 32px;
+      overflow-y: auto;
+    }
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .page-header h1 { font-size: 1.4rem; font-weight: 700; }
+    .page-header p  { font-size: .85rem; color: var(--muted); margin-top: 3px; }
+
+    /* ---- CARDS ---- */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    .card-title { font-size: .8rem; font-weight: 700; text-transform: uppercase;
+                  letter-spacing: .06em; color: var(--muted); margin-bottom: 16px; }
+
+    /* ---- BUTTONS ---- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: .88rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: background .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--pri-dark); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: var(--suc-dark); }
+    .btn-outline {
+      background: transparent;
+      border: 1.5px solid var(--border);
+      color: var(--text);
+    }
+    .btn-outline:hover { background: var(--bg); }
+
+    /* ---- STATS ROW ---- */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 20px;
+    }
+    .stat-label { font-size: .78rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing:.05em; }
+    .stat-value { font-size: 2rem; font-weight: 800; color: var(--text); line-height: 1.2; margin-top: 4px; }
+    .stat-sub   { font-size: .78rem; color: var(--muted); margin-top: 2px; }
+
+    /* ---- EMPTY STATE ---- */
+    .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty-icon { font-size: 3rem; }
+    .empty p { margin-top: 12px; font-size: .95rem; }
+
+    /************************************************************
+     * A4 PAGES (screen)
+     ************************************************************/
+    #pages-container { display: flex; flex-direction: column; gap: 24px; }
+
+    .a4-page {
+      /* A4 = 210mm × 297mm */
+      width: 210mm;
+      background: white;
+      box-shadow: 0 4px 16px rgba(0,0,0,.12);
+      padding: 8mm 6mm;
+      /* Use table layout for clean collapsing borders */
+      display: block;
+      overflow: hidden;
+    }
+
+    /* Inner table-like grid: each row has 2 label cells */
+    .a4-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      /* No gap — borders will touch */
+    }
+    .a4-row + .a4-row > .label-item { border-top: none; }
+
+    .label-item {
+      display: grid;
+      grid-template-columns: 14mm 1fr;
+      border: 1px solid #444;
+      break-inside: avoid;
+    }
+    /* Right cell in a row: collapse shared left border */
+    .label-item:last-child { border-left: none; }
+
+    .label-num {
+      border-right: 1px solid #444;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 10pt;
+      font-style: italic;
+      writing-mode: horizontal-tb;
+      text-align: center;
+      padding: 6px 3px;
+      word-break: break-all;
+      line-height: 1.2;
+    }
+
+    .label-content {
+      padding: 6px 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+    }
+
+    .lc-title {
+      font-style: italic;
+      font-weight: 700;
+      font-size: 9pt;
+      line-height: 1.35;
+      text-align: center;
+    }
+    .lc-time {
+      font-style: italic;
+      font-weight: 700;
+      font-size: 8.5pt;
+      text-align: center;
+    }
+    .lc-qty {
+      font-style: italic;
+      font-weight: 700;
+      font-size: 8.5pt;
+      text-align: center;
+    }
+
+    /************************************************************
+     * PRINT
+     ************************************************************/
+    @media print {
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .app-shell { display: block; }
+      .topbar, .sidebar, .page-header, .card, .stats-row { display: none !important; }
+      body { background: white; }
+      #pages-container { gap: 0; }
+      .a4-page {
+        box-shadow: none;
+        width: 210mm;
+        height: 297mm;
+        padding: 8mm 6mm;
+        page-break-after: always;
+        break-after: page;
+        overflow: hidden;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<input type="file" id="excel-input" accept=".xlsx,.xls" style="display:none" onchange="handleFile(event)">
+
+<div class="app-shell">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <span class="topbar-logo">PVFCCo</span>
+    <span class="topbar-divider"></span>
+    <span class="topbar-title">Nhãn Bìa Hồ Sơ</span>
+    <div class="topbar-right">
+      <button class="btn btn-outline" onclick="document.getElementById('excel-input').click()">
+        📂 Import Excel
+      </button>
+      <button class="btn btn-success" onclick="window.print()">
+        🖨️ In / Xuất PDF
+      </button>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">Chức năng</div>
+    <div class="sidebar-item active">🗂️ Nhãn Bìa Hồ Sơ</div>
+    <div class="sidebar-item" onclick="window.location.href='/'" style="cursor:pointer;">🏷️ Nhãn Hộp</div>
+    <div class="sidebar-section">Thông tin</div>
+    <div class="sidebar-item" id="sb-records">📄 0 hồ sơ</div>
+    <div class="sidebar-item" id="sb-pages">📑 0 trang A4</div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1>🗂️ Tạo Nhãn Bìa Hồ Sơ</h1>
+        <p>Import Excel → tự động tạo nhãn 2 cột • 10 nhãn/trang A4 • in thẳng từ trình duyệt</p>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row" id="stats-row" style="display:none">
+      <div class="stat-card">
+        <div class="stat-label">Hồ sơ</div>
+        <div class="stat-value" id="stat-records">0</div>
+        <div class="stat-sub">bản ghi hợp lệ</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Trang A4</div>
+        <div class="stat-value" id="stat-pages">0</div>
+        <div class="stat-sub">trang cần in</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Nhãn / trang</div>
+        <div class="stat-value">10</div>
+        <div class="stat-sub">2 cột × 5 hàng</div>
+      </div>
+    </div>
+
+    <!-- Upload card (shown before data) -->
+    <div class="card" id="upload-card">
+      <div class="card-title">Bắt đầu</div>
+      <div class="empty">
+        <div class="empty-icon">📂</div>
+        <p>Chọn file Excel để tạo nhãn bìa hồ sơ</p>
+        <br>
+        <button class="btn btn-primary" onclick="document.getElementById('excel-input').click()">
+          Chọn File Excel
+        </button>
+      </div>
+    </div>
+
+    <!-- Label pages -->
+    <div id="pages-container"></div>
+  </main>
+</div>
+
+<script>
+/****** COLUMN DETECTION ******/
+function detectColumns(headers) {
+  let idx = { hosoSo: -1, title: -1, time: -1, qty: -1 };
+  headers.forEach((h, i) => {
+    if (!h) return;
+    const k = String(h).toLowerCase().replace(/[\s\n\r]+/g, '');
+    if (k.includes('hồsơsố') && !k.includes('cũ') && idx.hosoSo < 0) idx.hosoSo = i;
+    if (k.includes('tiêuđề') && idx.title < 0) idx.title = i;
+    if (k.includes('thờigian') && idx.time < 0) idx.time = i;
+    if ((k.includes('sốlượngtờ') || k.includes('sốlượng')) && idx.qty < 0) idx.qty = i;
+  });
+  return idx;
+}
+
+/****** FILE HANDLER ******/
+function handleFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    // Find header row
+    let headerRow = -1;
+    for (let r = 0; r < Math.min(rows.length, 10); r++) {
+      const joined = rows[r].map(c => String(c || '')).join('').toLowerCase();
+      if (joined.includes('tiêuđề') || joined.includes('tiêu đề') ||
+          joined.includes('hồsơ') || joined.includes('hồ sơ')) {
+        headerRow = r; break;
+      }
+    }
+    if (headerRow < 0) { alert('Không tìm thấy dòng tiêu đề!'); return; }
+
+    const headers = rows[headerRow].map(c => String(c || ''));
+    const idx = detectColumns(headers);
+
+    if (idx.hosoSo < 0 || idx.title < 0) {
+      alert('Không tìm thấy cột "Hồ sơ số" hoặc "Tiêu đề hồ sơ"!\nHeaders: ' + headers.filter(Boolean).join(', '));
+      return;
+    }
+
+    // Collect valid record rows only
+    const records = [];
+    for (let r = headerRow + 1; r < rows.length; r++) {
+      const row = rows[r];
+      const rawNum = String(row[idx.hosoSo] || '').trim();
+      // Only valid numeric Hồ sơ số
+      if (!rawNum || isNaN(Number(rawNum.replace(/\./g,'')))) continue;
+
+      records.push({
+        hosoSo:   rawNum,
+        rawTitle: String(row[idx.title] || '').trim(),
+        timeVal:  idx.time >= 0 ? String(row[idx.time] || '').trim() : '',
+        qtyVal:   idx.qty  >= 0 ? String(row[idx.qty]  || '').trim() : '',
+      });
+    }
+
+    renderPages(records);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/****** RENDER ******/
+const PER_PAGE = 10; // 2 cols × 5 rows
+
+function renderPages(records) {
+  // Hide upload card, show stats
+  document.getElementById('upload-card').style.display = 'none';
+  const statsEl = document.getElementById('stats-row');
+  statsEl.style.display = 'grid';
+  const pages = Math.ceil(records.length / PER_PAGE);
+  document.getElementById('stat-records').textContent = records.length;
+  document.getElementById('stat-pages').textContent   = pages;
+  document.getElementById('sb-records').textContent   = `📄 ${records.length} hồ sơ`;
+  document.getElementById('sb-pages').textContent     = `📑 ${pages} trang A4`;
+
+  const container = document.getElementById('pages-container');
+  container.innerHTML = '';
+
+  for (let p = 0; p < pages; p++) {
+    const slice = records.slice(p * PER_PAGE, (p + 1) * PER_PAGE);
+
+    const page = document.createElement('div');
+    page.className = 'a4-page';
+
+    // Build rows of 2
+    for (let rowIdx = 0; rowIdx < 5; rowIdx++) {
+      const row = document.createElement('div');
+      row.className = 'a4-row';
+
+      const left  = slice[rowIdx * 2];
+      const right = slice[rowIdx * 2 + 1];
+
+      if (!left && !right) break;
+
+      row.appendChild(buildLabel(left  || null));
+      row.appendChild(buildLabel(right || null));
+      page.appendChild(row);
+    }
+
+    container.appendChild(page);
+  }
+}
+
+function buildLabel(rec) {
+  const item = document.createElement('div');
+  item.className = 'label-item';
+
+  if (!rec) {
+    // Empty placeholder to keep grid structure
+    item.style.border = '1px solid transparent';
+    return item;
+  }
+
+  const numDiv = document.createElement('div');
+  numDiv.className = 'label-num';
+  numDiv.textContent = rec.hosoSo;
+
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'label-content';
+
+  const titleDiv = document.createElement('div');
+  titleDiv.className = 'lc-title';
+  titleDiv.textContent = rec.rawTitle;
+  contentDiv.appendChild(titleDiv);
+
+  if (rec.timeVal) {
+    const t = document.createElement('div');
+    t.className = 'lc-time';
+    t.textContent = 'Thời gian bắt đầu kết thúc:  ' + rec.timeVal;
+    contentDiv.appendChild(t);
+  }
+
+  if (rec.qtyVal) {
+    const q = document.createElement('div');
+    q.className = 'lc-qty';
+    q.textContent = 'Số lượng tờ: ' + rec.qtyVal + ' tờ';
+    contentDiv.appendChild(q);
+  }
+
+  item.appendChild(numDiv);
+  item.appendChild(contentDiv);
+  return item;
+}
+</script>
+</body>
+</html>
