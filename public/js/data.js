@@ -70,7 +70,10 @@ function processExcelData(data) {
       groupedByBox[boxNum].records.push(recordNum);
       // Capture the first non-empty THBQ value for this box
       if (!groupedByBox[boxNum].thbq && thbqKey && row[thbqKey]) {
-        groupedByBox[boxNum].thbq = String(row[thbqKey]).trim();
+        // Normalize: replace all whitespace/newlines with single space
+        groupedByBox[boxNum].thbq = String(row[thbqKey])
+          .replace(/[\s\n\r]+/g, " ")
+          .trim();
       }
     }
   });
