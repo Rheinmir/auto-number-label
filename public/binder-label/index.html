@@ -181,10 +181,10 @@
       overflow: hidden;
     }
 
-    /* Inner table-like grid: each row has 2 label cells */
+    /* Inner table-like grid: each row has 1 label (full width) */
     .a4-row {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       /* No gap — borders will touch */
     }
     .a4-row + .a4-row > .label-item { border-top: none; }
@@ -195,8 +195,7 @@
       border: 1px solid #444;
       break-inside: avoid;
     }
-    /* Right cell in a row: collapse shared left border */
-    .label-item:last-child { border-left: none; }
+    /* No need to collapse any border in single-column layout */
 
     .label-num {
       border-right: 1px solid #444;
@@ -416,7 +415,7 @@ function handleFile(event) {
 }
 
 /****** RENDER ******/
-const PER_PAGE = 10; // 2 cols × 5 rows
+const PER_PAGE = 5; // 1 col × 5 rows
 
 function renderPages(records) {
   // Hide upload card, show stats
@@ -438,18 +437,14 @@ function renderPages(records) {
     const page = document.createElement('div');
     page.className = 'a4-page';
 
-    // Build rows of 2
-    for (let rowIdx = 0; rowIdx < 5; rowIdx++) {
+    // Build rows of 1
+    for (let rowIdx = 0; rowIdx < PER_PAGE; rowIdx++) {
+      const rec = slice[rowIdx];
+      if (!rec) break;
+
       const row = document.createElement('div');
       row.className = 'a4-row';
-
-      const left  = slice[rowIdx * 2];
-      const right = slice[rowIdx * 2 + 1];
-
-      if (!left && !right) break;
-
-      row.appendChild(buildLabel(left  || null));
-      row.appendChild(buildLabel(right || null));
+      row.appendChild(buildLabel(rec));
       page.appendChild(row);
     }
 
