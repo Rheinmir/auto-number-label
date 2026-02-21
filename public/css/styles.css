@@ -33,7 +33,7 @@ body {
 .printable-border {
     position: absolute;
     top: 10mm; left: 10mm; right: 10mm; bottom: 10mm;
-    border: 4px double #000;
+    border: 4px double #0054a6;
     pointer-events: none;
     z-index: 5;
 }
@@ -141,5 +141,5 @@ input[type=range]::-webkit-slider-runnable-track {
         background: white;
     }
 
-    .printable-border { border-color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .printable-border { border-color: #0054a6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
