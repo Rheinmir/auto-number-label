@@ -438,11 +438,13 @@ async function printAllLabels() {
   function buildLabelNode(record) {
     const wrapper = document.createElement("div");
     wrapper.style.cssText =
-      "width:105mm; height:148.5mm; overflow:hidden; position:relative; box-sizing:border-box;";
+      "width:105mm; height:148.5mm; overflow:hidden; position:relative; box-sizing:border-box; background:white;";
+
+    const scaleFactor = 0.709; // A5 -> A6
 
     const inner = document.createElement("div");
     inner.style.cssText =
-      "width:148mm; height:210mm; transform:scale(0.709); transform-origin:top left; position:absolute; background:white; font-family:'Times New Roman',Times,serif;";
+      "width:105mm; height:148.5mm; position:absolute; top:0; left:0; font-family:'Times New Roman',Times,serif;";
     inner.innerHTML = templateHtml;
 
     if (record) {
@@ -454,21 +456,46 @@ async function printAllLabels() {
       if (elTo) elTo.innerText = "Đến hồ sơ số: " + record["Đến hồ sơ số"];
     }
 
-    // Remove editing decorations and bake transforms
+    // Remove editing decorations and apply physical scaling
     inner.querySelectorAll(".draggable").forEach((d) => {
       d.classList.remove("active");
       d.style.outline = "none";
       d.style.background = "none";
 
-      // Unconditionally bake translate(x,y) into top/left because html2canvas struggles with nested transforms
       const dx = parseFloat(d.getAttribute("data-x")) || 0;
       const dy = parseFloat(d.getAttribute("data-y")) || 0;
-      const currentLeft = parseFloat(d.style.left) || 0;
-      const currentTop = parseFloat(d.style.top) || 0;
-      d.style.left = currentLeft + dx + "px";
-      d.style.top = currentTop + dy + "px";
+      let currentLeft = parseFloat(d.style.left) || 0;
+      let currentTop = parseFloat(d.style.top) || 0;
+
+      currentLeft += dx;
+      currentTop += dy;
+
+      // Physically scale absolute positions and sizes to bypass html2canvas transform bugs
+      d.style.left = currentLeft * scaleFactor + "px";
+      d.style.top = currentTop * scaleFactor + "px";
+
+      const w = parseFloat(d.style.width);
+      if (w) d.style.width = w * scaleFactor + "px";
+
+      const h = parseFloat(d.style.height);
+      if (h) d.style.height = h * scaleFactor + "px";
+
+      const fs = parseFloat(d.style.fontSize);
+      if (fs) d.style.fontSize = fs * scaleFactor + "px";
+
+      d.style.padding = 4 * scaleFactor + "px";
       d.style.transform = "none";
     });
+
+    // Scale the border to match the mathematically scaled elements
+    const border = inner.querySelector(".printable-border");
+    if (border) {
+      border.style.top = 10 * scaleFactor + "mm";
+      border.style.left = 10 * scaleFactor + "mm";
+      border.style.right = 10 * scaleFactor + "mm";
+      border.style.bottom = 10 * scaleFactor + "mm";
+      border.style.borderWidth = 4 * scaleFactor + "px";
+    }
 
     wrapper.appendChild(inner);
     return wrapper;
