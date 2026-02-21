@@ -434,69 +434,71 @@ async function printAllLabels() {
     return;
   }
 
-  // Helper: build a flat pre-scaled A6 label that html2canvas can render accurately.
-  // Reads computed styles from the LIVE canvas elements to avoid guess-work.
+  // Helper: build a flat A6 label using getBoundingClientRect() for pixel-exact coordinates.
+  // This reads the ACTUAL rendered screen positions (after all parent transforms),
+  // then maps them proportionally into a flat A6 container - no guessing needed.
   function buildLabelNode(record) {
     const liveCanvas = document.getElementById("label-canvas");
-    const scaleFactor = 0.709; // A5 (148mm x 210mm) -> A6 (105mm x 148.5mm)
 
-    // Create a completely flat container at A6 pixel dimensions — NO parent transforms
+    // A6 container in CSS pixels (105mm × 148.5mm at 96dpi)
+    const CONTAINER_W = 396; // 105mm * 3.779
+    const CONTAINER_H = 562; // 148.5mm * 3.779
+
+    const canvasBCR = liveCanvas.getBoundingClientRect();
+    const scaleX = CONTAINER_W / canvasBCR.width;
+    const scaleY = CONTAINER_H / canvasBCR.height;
+
+    // Create a completely flat container — NOT inside any parent transforms
     const container = document.createElement("div");
     container.style.cssText = [
       "position:fixed",
       "top:0",
       "left:-9999px",
-      "width:396px", // 105mm * 3.78 ≈ 396px
-      "height:562px", // 148.5mm * 3.78 ≈ 562px
+      `width:${CONTAINER_W}px`,
+      `height:${CONTAINER_H}px`,
       "background:white",
       "overflow:hidden",
       "font-family:'Times New Roman',Times,serif",
     ].join(";");
 
-    // Copy each live draggable element with pre-scaled geometry
     const liveDraggables = liveCanvas.querySelectorAll(".draggable");
     liveDraggables.forEach((origEl) => {
       const copy = origEl.cloneNode(true);
       const cs = getComputedStyle(origEl);
+      const elBCR = origEl.getBoundingClientRect();
 
-      // Bake drag offsets into base position
-      const dx = parseFloat(origEl.getAttribute("data-x")) || 0;
-      const dy = parseFloat(origEl.getAttribute("data-y")) || 0;
-      const baseLeft = parseFloat(origEl.style.left) || 0;
-      const baseTop = parseFloat(origEl.style.top) || 0;
-      const finalLeft = baseLeft + dx;
-      const finalTop = baseTop + dy;
+      // Map the BCR relative to the canvas BCR, then scale to container dimensions
+      const relLeft = elBCR.left - canvasBCR.left;
+      const relTop = elBCR.top - canvasBCR.top;
+      const relW = elBCR.width;
+      const relH = elBCR.height;
 
-      // Scale position, size, font metrics
-      copy.style.left = finalLeft * scaleFactor + "px";
-      copy.style.top = finalTop * scaleFactor + "px";
+      copy.style.position = "absolute";
+      copy.style.left = relLeft * scaleX + "px";
+      copy.style.top = relTop * scaleY + "px";
+      copy.style.width = relW * scaleX + "px";
+      copy.style.height = relH * scaleY + "px";
 
-      const w = parseFloat(origEl.style.width);
-      if (w) copy.style.width = w * scaleFactor + "px";
-
-      const h = parseFloat(origEl.style.height);
-      if (h) copy.style.height = h * scaleFactor + "px";
-
-      // Use COMPUTED font-size so we catch values from CSS classes too
+      // Scale font explicitly (computed font-size divided by current visual scale = CSS font size)
       const fsPx = parseFloat(cs.fontSize);
-      if (fsPx) copy.style.fontSize = fsPx * scaleFactor + "px";
+      if (fsPx) copy.style.fontSize = fsPx * scaleX + "px";
 
-      // Use COMPUTED line-height in px for accurate vertical spacing
-      const lhPx = parseFloat(cs.lineHeight);
-      if (!isNaN(lhPx)) copy.style.lineHeight = lhPx * scaleFactor + "px";
+      // Fix line-height to exactly the element height so text is vertically centered
+      copy.style.lineHeight = relH * scaleY + "px";
 
-      copy.style.padding = 4 * scaleFactor + "px";
       copy.style.transform = "none";
       copy.classList.remove("active");
       copy.style.border = "none";
       copy.style.background = "none";
       copy.style.outline = "none";
       copy.style.cursor = "default";
+      copy.style.padding = "0";
+      copy.style.boxSizing = "border-box";
 
       container.appendChild(copy);
     });
 
-    // Inject record data into the container's copies
+    // Inject record data
     if (record) {
       const elBoxNum = container.querySelector("#el-boxnum");
       const elFrom = container.querySelector("#el-from");
@@ -506,17 +508,18 @@ async function printAllLabels() {
       if (elTo) elTo.innerText = "Đến hồ sơ số: " + record["Đến hồ sơ số"];
     }
 
-    // Copy the printable border (scaled)
+    // Draw border from BCR of the printable-border element
     const liveBorder = liveCanvas.querySelector(".printable-border");
     if (liveBorder) {
+      const borderBCR = liveBorder.getBoundingClientRect();
       const border = document.createElement("div");
       border.style.cssText = [
         "position:absolute",
-        `top:${10 * scaleFactor}mm`,
-        `left:${10 * scaleFactor}mm`,
-        `right:${10 * scaleFactor}mm`,
-        `bottom:${10 * scaleFactor}mm`,
-        `border:${4 * scaleFactor}px double #0054a6`,
+        `top:${(borderBCR.top - canvasBCR.top) * scaleY}px`,
+        `left:${(borderBCR.left - canvasBCR.left) * scaleX}px`,
+        `width:${borderBCR.width * scaleX}px`,
+        `height:${borderBCR.height * scaleY}px`,
+        "border:2px double #0054a6",
         "pointer-events:none",
       ].join(";");
       container.appendChild(border);
