@@ -42,7 +42,8 @@ function processExcelData(data) {
       const kLow = key.toLowerCase().replace(/\s/g, "");
       if (kLow.includes("hộpsố") && !kLow.includes("cũ")) boxKey = key;
       if (kLow.includes("hồsơsố") && !kLow.includes("cũ")) recordKey = key;
-      if (kLow.includes("thbq")) thbqKey = key;
+      if (kLow.includes("thbq") && !kLow.includes("cũ") && !kLow.includes("cu"))
+        thbqKey = key;
     }
   }
 
