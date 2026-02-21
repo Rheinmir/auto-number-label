@@ -434,62 +434,61 @@ async function printAllLabels() {
     return;
   }
 
-  // Helper: deep-clone the ACTUAL live label-canvas DOM so the PDF always matches the preview.
-  // We capture each label at full A5 size individually, then jsPDF places it at A6 dims on A4.
-  async function buildLabelCanvas(record) {
-    // Clone the live canvas — this is the exact same DOM the user sees in preview
-    const liveCanvas = document.getElementById("label-canvas");
-    const clone = liveCanvas.cloneNode(true);
+  // Get reference to the live canvas whose rendering is guaranteed to match preview
+  const liveCanvas = document.getElementById("label-canvas");
 
-    // Bake all drag transforms into top/left so html2canvas can render them
-    clone.querySelectorAll(".draggable").forEach((d) => {
-      d.classList.remove("active");
-      d.style.outline = "none";
-      d.style.background = "none";
-      d.style.border = "none";
-      d.style.cursor = "default";
-
-      const dx = parseFloat(d.getAttribute("data-x")) || 0;
-      const dy = parseFloat(d.getAttribute("data-y")) || 0;
-      const currentLeft = parseFloat(d.style.left) || 0;
-      const currentTop = parseFloat(d.style.top) || 0;
-      d.style.left = currentLeft + dx + "px";
-      d.style.top = currentTop + dy + "px";
+  // Bake all current drag transforms into top/left so positions are stable during swaps
+  liveCanvas.querySelectorAll(".draggable").forEach((d) => {
+    const dx = parseFloat(d.getAttribute("data-x")) || 0;
+    const dy = parseFloat(d.getAttribute("data-y")) || 0;
+    if (dx !== 0 || dy !== 0) {
+      d.style.left = (parseFloat(d.style.left) || 0) + dx + "px";
+      d.style.top = (parseFloat(d.style.top) || 0) + dy + "px";
       d.style.transform = "none";
-    });
-
-    // Inject record data into the clone
-    if (record) {
-      const elBoxNum = clone.querySelector("#el-boxnum");
-      const elFrom = clone.querySelector("#el-from");
-      const elTo = clone.querySelector("#el-to");
-      if (elBoxNum) elBoxNum.innerText = record["Hộp số"];
-      if (elFrom) elFrom.innerText = "Từ hồ sơ số: " + record["Từ hồ sơ số"];
-      if (elTo) elTo.innerText = "Đến hồ sơ số: " + record["Đến hồ sơ số"];
+      d.setAttribute("data-x", 0);
+      d.setAttribute("data-y", 0);
     }
+  });
 
-    // Position off-screen but in DOM so html2canvas can render it
-    clone.style.position = "fixed";
-    clone.style.top = "0";
-    clone.style.left = "-9999px";
-    clone.style.zIndex = "9999";
-    clone.style.transform = "none";
-    clone.style.transition = "none";
-    document.body.appendChild(clone);
+  // Save the original data fields so we can restore them after each capture
+  const origBoxNum = liveCanvas.querySelector("#el-boxnum");
+  const origFrom = liveCanvas.querySelector("#el-from");
+  const origTo = liveCanvas.querySelector("#el-to");
+  const savedBoxNum = origBoxNum ? origBoxNum.innerText : "";
+  const savedFrom = origFrom ? origFrom.innerText : "";
+  const savedTo = origTo ? origTo.innerText : "";
 
-    // Wait for paint
-    await new Promise((r) => setTimeout(r, 30));
+  // Ensure editing decorations are hidden during capture
+  liveCanvas.querySelectorAll(".draggable").forEach((d) => {
+    d.classList.remove("active");
+    d._savedBorder = d.style.border;
+    d._savedBg = d.style.background;
+    d.style.border = "none";
+    d.style.background = "none";
+  });
 
-    const capturedCanvas = await html2canvas(clone, {
+  // Helper: swap in record data, capture the live canvas, return the canvas element
+  async function captureRecord(record) {
+    if (origBoxNum) origBoxNum.innerText = record ? record["Hộp số"] : "";
+    if (origFrom)
+      origFrom.innerText = record
+        ? "Từ hồ sơ số: " + record["Từ hồ sơ số"]
+        : "";
+    if (origTo)
+      origTo.innerText = record
+        ? "Đến hồ sơ số: " + record["Đến hồ sơ số"]
+        : "";
+
+    // Give the browser a tick to paint the new text
+    await new Promise((r) => setTimeout(r, 20));
+
+    return html2canvas(liveCanvas, {
       scale: 1.5,
       useCORS: true,
       allowTaint: true,
       logging: false,
       backgroundColor: "#ffffff",
     });
-
-    document.body.removeChild(clone);
-    return capturedCanvas;
   }
 
   try {
@@ -527,8 +526,8 @@ async function printAllLabels() {
         pageCreated = true;
       }
 
-      // Capture the label as a full A5 image using the ACTUAL live DOM clone
-      const capturedCanvas = await buildLabelCanvas(rec);
+      // Capture the live canvas with record data swapped in
+      const capturedCanvas = await captureRecord(rec);
       const imgData = capturedCanvas.toDataURL("image/jpeg", 0.95);
 
       const pos = positions[slot];
@@ -548,6 +547,16 @@ async function printAllLabels() {
       loadingBar.style.width = percent + "%";
       loadingProgress.innerText = `Đang xuất PDF: ${percent}%`;
     }
+
+    // Restore original data and decorations on the live canvas
+    if (origBoxNum) origBoxNum.innerText = savedBoxNum;
+    if (origFrom) origFrom.innerText = savedFrom;
+    if (origTo) origTo.innerText = savedTo;
+    liveCanvas.querySelectorAll(".draggable").forEach((d) => {
+      if (d._savedBorder !== undefined) d.style.border = d._savedBorder;
+      if (d._savedBg !== undefined) d.style.background = d._savedBg;
+    });
+    if (window.syncA4Preview) window.syncA4Preview();
 
     pdf.save(filename);
 
