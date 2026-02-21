@@ -244,6 +244,8 @@
     /************************************************************
      * PRINT
      ************************************************************/
+    @page { size: A4 portrait; margin: 0; }
+
     @media print {
       * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .app-shell { display: block; }
@@ -257,6 +259,15 @@
         padding: 8mm 6mm;
         page-break-after: always;
         break-after: page;
+        overflow: hidden;
+      }
+      /* Fix each row to exactly 1/5th of the usable A4 height (297 - 16mm padding) */
+      .a4-row {
+        height: calc((297mm - 16mm) / 5);
+        overflow: hidden;
+      }
+      .label-item {
+        height: 100%;
         overflow: hidden;
       }
     }
